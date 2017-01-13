@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_bot_id(bot_token):
-    headers = {'Authorization': bot_token}
+    headers = {'Authorization': 'Bot ' + bot_token}
     r = requests.get('https://discordapp.com/api/users/@me',
                      headers=headers)
     if r.status_code != 200:
