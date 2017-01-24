@@ -3,14 +3,15 @@ from random import randint
 from decorators import command, bg_task
 import logging
 import discord
+import asyncio
 log = logging.getLogger('discord')
 
 MEE6_COLOR = int('008cba', 16)
 MEE6_ICON = 'https://discordapp.com/api/guilds/159962941502783488/icons/e66a77aee769b25339ee08412542556a.jpg'
 
-def check_add_role_perm(member, role):
-    permissions = member.server_permissions
-    return permissions.manage_roles and member.top_role > role
+def check_add_role_perm(member, role, mee6):
+    permissions = mee6.server_permissions
+    return permissions.manage_roles and mee6.top_role > role
 
 class Levels(Plugin):
 
@@ -233,7 +234,7 @@ class Levels(Plugin):
         return rewards
 
     async def add_role(self, member, role):
-        if check_add_role_perm(member, role):
+        if check_add_role_perm(member, role, member.server.me):
             return await self.mee6.add_roles(member, role)
 
     async def update_rewards(self, server):
@@ -259,7 +260,9 @@ class Levels(Plugin):
                     log.info('Cannot give {} the {} reward'.format(player.id,
                                                                    role.id))
                     log.info(e)
+            await asyncio.sleep(0.1)
 
+    @bg_task(10)
     async def update_rewards_job(self):
         for server in list(self.mee6.servers):
             plugin_enabled = 'Levels' in await self.mee6.db.redis.smembers(
@@ -272,3 +275,5 @@ class Levels(Plugin):
             except Exception as e:
                 log.info('Cannot update the rewards for server '+server.id)
                 log.info(e)
+
+            await asyncio.sleep(0.1)
