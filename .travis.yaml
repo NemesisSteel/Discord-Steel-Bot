@@ -1,0 +1,12 @@
+sudo: required
+language: python
+
+services:
+    - docker
+
+script:
+    - cd chat && docker build -t cookkkie/mee6-chat . && cd ../
+
+after_success:
+    - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
+    - docker push cookkkie/mee6-chat
