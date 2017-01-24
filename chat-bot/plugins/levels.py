@@ -72,21 +72,47 @@ class Levels(Plugin):
                                         resp.format(message.author.mention))
             return
 
-        embed = discord.Embed(title='', colour=MEE6_COLOR)
-        embed.add_field(name='Rank',
-                        value='{}/{}'.format(player_info['rank'],
-                                       player_info['total_players']),
-                        inline=True)
-        embed.add_field(name='Lvl.', value=player_info['lvl'], inline=True)
-        embed.add_field(name='Exp.',
-                        value='{}/{} (tot. {})'.format(player_info['remaining_xp'],
-                                                       player_info['level_xp'],
-                                                       player_info['total_xp']),
-                        inline=True)
-        embed.set_author(name=player.name, icon_url=player.avatar_url)
-        embed.set_footer(text='Mee6.xyz', icon_url=MEE6_ICON)
+        if message.channel.permissions_for(message.server.me).embed_links:
+            embed = discord.Embed(title='', colour=MEE6_COLOR)
+            embed.add_field(name='Rank',
+                            value='{}/{}'.format(player_info['rank'],
+                                           player_info['total_players']),
+                            inline=True)
+            embed.add_field(name='Lvl.', value=player_info['lvl'], inline=True)
+            embed.add_field(name='Exp.',
+                            value='{}/{} (tot. {})'.format(player_info['remaining_xp'],
+                                                           player_info['level_xp'],
+                                                           player_info['total_xp']),
+                            inline=True)
+            embed.set_author(name=player.name, icon_url=player.avatar_url)
+            embed.set_footer(text='Mee6.xyz', icon_url=MEE6_ICON)
 
-        await self.mee6.send_message(message.channel, embed=embed)
+            return await self.mee6.send_message(message.channel, embed=embed)
+
+        if player != message.author:
+            response = '{} : **{}**\'s rank > **LEVEL {}** | **XP {}/{}** '\
+                '| **TOTAL XP {}** | **Rank {}/{}**'.format(
+                    message.author.mention,
+                    player.name,
+                    player_info['lvl'],
+                    player_info['remaining_xp'],
+                    player_info['level_xp'],
+                    player_info['total_xp'],
+                    player_info['rank'],
+                    player_info['total_players']
+                )
+        else:
+            response = '{} : **LEVEL {}** | **XP {}/{}** | '\
+                '**TOTAL XP {}** | **Rank {}/{}**'.format(
+                    player.mention,
+                    player_info['lvl'],
+                    player_info['remaining_xp'],
+                    player_info['level_xp'],
+                    player_info['total_xp'],
+                    player_info['rank'],
+                    player_info['total_players']
+                )
+        await self.mee6.send_message(message.channel, response)
 
     async def get_player_info(self, member):
         server = member.server
