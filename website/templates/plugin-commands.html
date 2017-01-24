@@ -30,7 +30,6 @@ $('#add').click(function(){
 							<tr>
 								<th>Command</th>
 								<th>Message</th>
-								<th>Permissions</th>
 								<th>Actions</th>
 							</tr>
 						</thead>
@@ -44,9 +43,6 @@ $('#add').click(function(){
 											<input name="cmd_name" type="hidden" value="{{cmd['name']}}">
 											<textarea class="form-control cmd_message" name="cmd_message" rows="3" style="resize:vertical;">{{cmd['message']}}</textarea>
 										</form>
-									</td>
-									<td>
-										<input name="roles" type="text" data-role="tagsinput" class="roles">
 									</td>
 									<td><a href="#" id="edit_{{cmd['name'][1:]}}" class="btn btn-warning btn-xs"><i class="fa fa-pencil"></i> Edit</a>
 										<a href="{{url_for('delete_command', server_id=server.id, command=cmd['name'])}}" class="btn btn-danger btn-xs"><i class="fa fa-trash"></i> Delete</a></td>

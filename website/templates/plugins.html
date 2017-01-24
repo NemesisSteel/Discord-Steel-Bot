@@ -15,6 +15,7 @@
 	view='plugin_levels',
 	description='Let your members gain <strong>XP</strong> and <strong>levels</strong> by participating in the chat !',
 	server=server,
+	maintenance=True,
 	enabled_plugins=enabled_plugins
 	)}}
 	{{ plugin.view(
@@ -66,6 +67,7 @@
 	icon='reddit',
 	pretty_name='Reddit',
 	view='plugin_reddit',
+	maintenance=True,
 	description='Get the new posts of your favorite subreddits!',
 	server=server,
 	enabled_plugins=enabled_plugins
@@ -78,21 +80,4 @@
 	server=server,
 	enabled_plugins=enabled_plugins
 	)}}
-	{{ plugin.view(
-	'Logs',
-	icon="book",
-	view='plugin_logs',
-	description='Logs all the messages of your server!',
-	server=server,
-	enabled_plugins=enabled_plugins
-	)}}
-	{{ plugin.view(
-	'Git',
-	icon='github',
-	pretty_name='Github Repo',
-	view='plugin_git',
-	description='Enables the <strong>!git</strong> command.',
-	server=server,
-	enabled_plugins=enabled_plugins
-	)}}
-</div>
+	</div>

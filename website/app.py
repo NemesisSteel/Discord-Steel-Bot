@@ -62,7 +62,9 @@ def avatar(user):
 
 def get_user(token):
     # If it's an api_token, go fetch the discord_token
+    user_id = None
     if token.get('api_key'):
+        user_id = token['user_id']
         discord_token_str = db.get('user:{}:discord_token'.format(
             token['user_id']
         ))
@@ -71,6 +73,18 @@ def get_user(token):
         token = json.loads(discord_token_str)
 
     discord = make_session(token=token)
+
+    if user_id:
+        ttl = db.ttl('user:{}'.format(user_id))
+        if not ttl or ttl == -1:
+            db.delete('user:{}'.format(user_id))
+
+        cached_user = db.get('user:{}'.format(user_id))
+        if cached_user:
+            user = json.loads(cached_user)
+            points = db.get('user:'+user['id']+':points') or 0
+            user['points'] = int(points)
+            return user
 
     try:
         req = discord.get(API_BASE_URL + '/users/@me')
@@ -87,6 +101,7 @@ def get_user(token):
     # Saving that to the db
     db.sadd('users', user['id'])
     db.set('user:{}'.format(user['id']), json.dumps(user))
+    db.expire('user:{}'.format(user['id']), 30)
 
     points = db.get('user:'+user['id']+':points') or 0
     user['points'] = int(points)
@@ -106,6 +121,14 @@ def get_user_guilds(token):
 
     discord = make_session(token=token)
 
+    ttl = db.ttl('user:{}:guilds'.format(user_id))
+    if not ttl or ttl == -1:
+        db.delete('user:{}:guilds'.format(user_id))
+
+    cached_guilds = db.get('user:{}:guilds'.format(user_id))
+    if cached_guilds:
+        return json.loads(cached_guilds)
+
     req = discord.get(API_BASE_URL + '/users/@me/guilds')
     if req.status_code != 200:
         abort(req.status_code)
@@ -113,6 +136,7 @@ def get_user_guilds(token):
     guilds = req.json()
     # Saving that to the db
     db.set('user:{}:guilds'.format(user_id), json.dumps(guilds))
+    db.expire('user:{}:guilds'.format(user_id), 30)
     return guilds
 
 
@@ -559,20 +583,41 @@ def get_guild(server_id):
         return r.json()
     return None
 
-
 def get_guild_members(server_id):
     headers = {'Authorization': 'Bot '+MEE6_TOKEN}
     members = []
-    while len(members) % 1000 == 0:
+    print('lel')
+
+    ttl = db.ttl('guild:{}:members'.format(server_id))
+    if not ttl or ttl == -1:
+        print('ko')
+        db.delete('guild:{}:members'.format(server_id))
+
+    cached_members = db.get('guild:{}:members'.format(server_id))
+    if cached_members:
+        print('loul2')
+        return json.loads(cached_members)
+
+    while True:
+        params = {'limit': 1000}
+        if len(members):
+            params['after'] = members[-1]['user']['id']
+
         r = requests.get(
             API_BASE_URL+'/guilds/{}/members'.format(server_id),
-            params={'limit': 1000, 'offset': len(members)},
+            params=params,
             headers=headers)
         if r.status_code == 200:
             chunk = r.json()
             members += chunk
         if chunk == []:
             break
+
+    db.set('guild:{}:members'.format(server_id), json.dumps(members))
+    db.expire('guild:{}:members'.format(server_id), 30)
+
+    print('loul')
+
     return members
 
 
@@ -765,6 +810,7 @@ def plugin_commands(server_id):
     commands = []
     commands_names = db.smembers('Commands.{}:commands'.format(server_id))
     _members = get_guild_members(server_id)
+    guild = get_guild(server_id)
     mention_parser = get_mention_parser(server_id, _members)
     members = typeahead_members(_members)
     for cmd in commands_names:
@@ -777,6 +823,7 @@ def plugin_commands(server_id):
         commands.append(command)
     commands = sorted(commands, key=lambda k: k['name'])
     return {
+        'guild_roles': guild['roles'],
         'guild_members': members,
         'commands': commands
     }
