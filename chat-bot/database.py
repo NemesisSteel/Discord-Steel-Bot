@@ -14,7 +14,6 @@ class Db(object):
         self.mongo_url = mongo_url
         self.loop.create_task(self.create())
         self.redis_address = parse_redis_url(redis_url)
-        self.mongo = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
 
     async def create(self):
         self.redis = await aioredis.create_redis(

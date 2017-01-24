@@ -2,15 +2,15 @@ from plugin import Plugin
 from random import randint
 from decorators import command, bg_task
 import logging
+import discord
 log = logging.getLogger('discord')
 
+MEE6_COLOR = int('008cba', 16)
+MEE6_ICON = 'https://discordapp.com/api/guilds/159962941502783488/icons/e66a77aee769b25339ee08412542556a.jpg'
 
-def check_add_role_perm(adder_roles, role):
-    manage_role_perms = any(map(lambda r: r.permissions.manage_roles,
-                                adder_roles))
-    highest_role = max(adder_roles, key=lambda r: r.position)
-    return manage_role_perms and role.position < highest_role.position
-
+def check_add_role_perm(member, role):
+    permissions = member.server_permissions
+    return permissions.manage_roles and member.top_role > role
 
 class Levels(Plugin):
 
@@ -45,7 +45,7 @@ class Levels(Plugin):
              description="Get a link to the server leaderboard",
              banned_roles="banned_roles")
     async def levels(self, message, args):
-        url = "http://mee6.xyz/levels/" + message.server.id
+        url = "<http://mee6.xyz/levels/" + message.server.id + ">"
         response = "Go check **" + message.server.name + "**'s leaderboard: "
         response += url + " :wink: "
         await self.mee6.send_message(message.channel, response)
@@ -72,31 +72,21 @@ class Levels(Plugin):
                                         resp.format(message.author.mention))
             return
 
-        if player != message.author:
-            response = '{} : **{}**\'s rank > **LEVEL {}** | **XP {}/{}** '\
-                '| **TOTAL XP {}** | **Rank {}/{}**'.format(
-                    message.author.mention,
-                    player.name,
-                    player_info['lvl'],
-                    player_info['remaining_xp'],
-                    player_info['level_xp'],
-                    player_info['total_xp'],
-                    player_info['rank'],
-                    player_info['total_players']
-                )
-        else:
-            response = '{} : **LEVEL {}** | **XP {}/{}** | '\
-                '**TOTAL XP {}** | **Rank {}/{}**'.format(
-                    player.mention,
-                    player_info['lvl'],
-                    player_info['remaining_xp'],
-                    player_info['level_xp'],
-                    player_info['total_xp'],
-                    player_info['rank'],
-                    player_info['total_players']
-                )
+        embed = discord.Embed(title='', colour=MEE6_COLOR)
+        embed.add_field(name='Rank',
+                        value='{}/{}'.format(player_info['rank'],
+                                       player_info['total_players']),
+                        inline=True)
+        embed.add_field(name='Lvl.', value=player_info['lvl'], inline=True)
+        embed.add_field(name='Exp.',
+                        value='{}/{} (tot. {})'.format(player_info['remaining_xp'],
+                                                       player_info['level_xp'],
+                                                       player_info['total_xp']),
+                        inline=True)
+        embed.set_author(name=player.name, icon_url=player.avatar_url)
+        embed.set_footer(text='Mee6.xyz', icon_url=MEE6_ICON)
 
-        await self.mee6.send_message(message.channel, response)
+        await self.mee6.send_message(message.channel, embed=embed)
 
     async def get_player_info(self, member):
         server = member.server
@@ -217,7 +207,7 @@ class Levels(Plugin):
         return rewards
 
     async def add_role(self, member, role):
-        if check_add_role_perm(member.server.me.roles, role):
+        if check_add_role_perm(member, role):
             return await self.mee6.add_roles(member, role)
 
     async def update_rewards(self, server):
@@ -244,7 +234,6 @@ class Levels(Plugin):
                                                                    role.id))
                     log.info(e)
 
-    @bg_task(60)
     async def update_rewards_job(self):
         for server in list(self.mee6.servers):
             plugin_enabled = 'Levels' in await self.mee6.db.redis.smembers(

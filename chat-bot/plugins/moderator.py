@@ -2,6 +2,7 @@ from plugin import Plugin
 from functools import wraps
 from decorators import command
 
+import discord
 import logging
 import asyncio
 import re
@@ -79,18 +80,17 @@ class Moderator(Plugin):
         if check:
             return
 
-        allow, deny = message.channel.overwrites_for(member)
-        allow.send_messages = False
-        deny.send_messages = True
+        overwrite = message.channel.overwrites_for(member) or \
+        discord.PermissionOverwrite()
+        overwrite.send_messages = False
         await self.mee6.edit_channel_permissions(
             message.channel,
             member,
-            allow=allow,
-            deny=deny
+            overwrite
         )
         await self.mee6.send_message(
             message.channel,
-            "{} is now 🙊here !".format(member.mention)
+            "{} is now 🙊here!".format(member.mention)
         )
 
     @command(pattern='^!unmute <@!?([0-9]*)>$', db_name="mute", db_check=True,
@@ -104,14 +104,13 @@ class Moderator(Plugin):
         if check:
             return
 
-        allow, deny = message.channel.overwrites_for(member)
-        allow.send_messages = True
-        deny.send_messages = False
+        overwrite = message.channel.overwrites_for(member) or \
+        discord.PermissionOverwrite()
+        overwrite.send_messages = True
         await self.mee6.edit_channel_permissions(
             message.channel,
             member,
-            allow=allow,
-            deny=deny
+            overwrite
         )
         await self.mee6.send_message(
             message.channel,

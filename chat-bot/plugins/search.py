@@ -10,6 +10,8 @@ from collections import OrderedDict
 MAL_USERNAME = os.getenv('MAL_USERNAME')
 MAL_PASSWORD = os.getenv('MAL_PASSWORD')
 
+TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
+
 IMGUR_ID = os.getenv('IMGUR_ID')
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -137,7 +139,11 @@ class Search(Plugin):
         search = args[0]
         url = "https://api.twitch.tv/kraken/search/channels"
         with aiohttp.ClientSession() as session:
-            async with session.get(url, params={"q": search}) as resp:
+            params = {
+                "q": search,
+                "client_id": TWITCH_CLIENT_ID,
+            }
+            async with session.get(url, params=params) as resp:
                 data = await resp.json()
 
         if data["channels"]:
@@ -189,7 +195,7 @@ class Search(Plugin):
     async def manga(self, message, args):
         search = args[0]
         auth = aiohttp.BasicAuth(login=MAL_USERNAME, password=MAL_PASSWORD)
-        url = 'http://myanimelist.net/api/manga/search.xml'
+        url = 'https://myanimelist.net/api/manga/search.xml'
         params = {'q': search}
         with aiohttp.ClientSession(auth=auth) as session:
             async with session.get(url, params=params) as response:
@@ -245,7 +251,7 @@ class Search(Plugin):
                                                 '<br />',
                                                 ''
                                             )))
-        msg += 'http://myanimelist.net/manga/{}'.format(entry.find('id').text)
+        msg += 'https://myanimelist.net/manga/{}'.format(entry.find('id').text)
 
         await self.mee6.send_message(message.channel,
                                      msg)
@@ -256,8 +262,8 @@ class Search(Plugin):
              usage="!anime anime_name")
     async def anime(self, message, args):
         search = args[0]
-        auth = aiohttp.BasicAuth(login=MAL_USERNAME, password=MAL_PASSWORD)
-        url = 'http://myanimelist.net/api/anime/search.xml'
+        auth = aiohttp.BasicAuth(MAL_USERNAME, password=MAL_PASSWORD)
+        url = 'https://myanimelist.net/api/anime/search.xml'
         params = {'q': search}
         with aiohttp.ClientSession(auth=auth) as session:
             async with session.get(url, params=params) as response:
@@ -313,7 +319,7 @@ class Search(Plugin):
                                                 '<br />',
                                                 ''
                                             )))
-        msg += 'http://myanimelist.net/anime/{}'.format(entry.find('id').text)
+        msg += 'https://myanimelist.net/anime/{}'.format(entry.find('id').text)
 
         await self.mee6.send_message(message.channel,
                                      msg)

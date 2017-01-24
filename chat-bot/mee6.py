@@ -1,5 +1,6 @@
 import discord
 import logging
+import os
 from plugin_manager import PluginManager
 from database import Db
 from datadog import DDAgent
@@ -19,6 +20,7 @@ class Mee6(discord.Client):
         self.redis_url = kwargs.get('redis_url')
         self.mongo_url = kwargs.get('mongo_url')
         self.dd_agent_url = kwargs.get('dd_agent_url')
+        self.sentry_dsn = kwargs.get('sentry_dsn')
         self.db = Db(self.redis_url, self.mongo_url, self.loop)
         self.plugin_manager = PluginManager(self)
         self.plugin_manager.load_all()
@@ -73,13 +75,13 @@ class Mee6(discord.Client):
 
         self.stats.set('mee6.servers', server.id)
         self.stats.incr('mee6.server_join')
+        await self.db.redis.sadd('servers', server.id)
 
         log.info('Joined {} server : {} !'.format(
             server.owner.name,
             server.name
         ))
         log.debug('Adding server {}\'s id to db'.format(server.id))
-        await self.db.redis.sadd('servers', server.id)
         await self.db.redis.set('server:{}:name'.format(server.id), server.name)
         if server.icon:
             await self.db.redis.set(
@@ -200,62 +202,3 @@ class Mee6(discord.Client):
         enabled_plugins = await self.get_plugins(server)
         for plugin in enabled_plugins:
             self.loop.create_task(plugin.on_server_update(before, after))
-
-    async def on_server_role_create(self, server, role):
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_server_role_create(server, role))
-
-    async def on_server_role_delete(self, server, role):
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_server_role_delete(server, role))
-
-    async def on_server_role_update(self, before, after):
-        server = None
-        for s in self.servers:
-            if after.id in map(lambda r: r.id, s.roles):
-                server = s
-                break
-
-        if server is None:
-            return
-
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_server_role_update(before, after))
-
-    async def on_voice_state_update(self, before, after):
-        if after is None and before is None:
-            return
-        elif after is None:
-            server = before.server
-        elif before is None:
-            server = after.server
-        else:
-            server = after.server
-
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_voice_state_update(before, after))
-
-    async def on_member_ban(self, member):
-        server = member.server
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_member_ban(member))
-
-    async def on_member_unban(self, member):
-        server = member.server
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_member_unban(member))
-
-    async def on_typing(self, channel, user, when):
-        if channel.is_private:
-            return
-
-        server = channel.server
-        enabled_plugins = await self.get_plugins(server)
-        for plugin in enabled_plugins:
-            self.loop.create_task(plugin.on_typing(channel, user, when))

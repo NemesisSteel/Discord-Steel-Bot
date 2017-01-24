@@ -1,6 +1,8 @@
 # Latest discord.py
-git+https://github.com/cookkkie/discord.py.git@async
+git+https://github.com/rapptz/discord.py.git@async
 aioredis
 motor
 aiomeasures
 BeautifulSoup4
+raven
+raven_aiohttp

@@ -54,8 +54,10 @@ def command(pattern=None, db_check=False, user_check=None, db_name=None,
             author_role_ids = [role.id for role in author.roles]
             storage = await self.get_storage(server)
 
-            is_admin = any([role.permissions.manage_server
-                            for role in author.roles])
+            is_owner = author.server.owner.id == author.id
+
+            perms = author.server_permissions
+            is_admin = perms.manage_server or perms.administrator or is_owner
 
             # Checking if the command is enabled
             if db_check:
