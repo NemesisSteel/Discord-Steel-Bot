@@ -262,7 +262,6 @@ class Levels(Plugin):
                     log.info(e)
             await asyncio.sleep(0.1)
 
-    @bg_task(10)
     async def update_rewards_job(self):
         for server in list(self.mee6.servers):
             plugin_enabled = 'Levels' in await self.mee6.db.redis.smembers(
