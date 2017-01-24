@@ -6,9 +6,6 @@ from plugins.commands import Commands
 from plugins.help import Help
 from plugins.levels import Levels
 from plugins.welcome import Welcome
-#from plugins.logs import Logs
-#from plugins.git import Git
-#from plugins.streamers import Streamers
 from plugins.moderator import Moderator
 #from plugins.early_backers import EarlyBackers
 from plugins.music import Music
