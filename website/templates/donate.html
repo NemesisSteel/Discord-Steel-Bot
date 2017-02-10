@@ -45,26 +45,22 @@
 $(document).ready(function() {
           $("#slider").slider({
               animate: true,
-              value:1,
-              min: 1,
-              max: 60,
-              step: 1,
+              value: 5,
+              min: 5,
+              max: 100,
+              step: 5,
               slide: function(event, ui) {
-                  update(1,ui.value); //changed
+                  update(5,ui.value); //changed
               }
           });
 
-          //Added, set initial value.
-          $("#amount").val(1);
-          $("#amount-label").text(1);
-          
-          update();
+          update(5,5);
       });
 
       //changed. now with parameter
       function update(slider,val) {
         //changed. Now, directly take value from ui.value. if not set (initial, will use current value.)
-        var $amount = slider == 1?val:$("#amount").val();
+        var $amount = val;
 
          $( "#amount" ).val($amount);
          $( "#amount-label" ).text($amount);

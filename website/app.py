@@ -645,14 +645,14 @@ BUFFS = {'music30': {'name': 'music30',
                      'fancy_name': 'Music Plugin',
                      'description': 'Enables the music plugin in your server'
                      ' for 30 days.',
-                     'price': 300,
+                     'price': 500,
                      'duration': 3600*24*30},
          'musicinfinite': {'name': 'musicinfinite',
                            'buff_name': 'music',
                            'fancy_name': 'Infinite Music Plugin',
                            'description': 'Enabled the music plugin in your'
                            ' server for life!',
-                           'price': 2500,
+                           'price': 3000,
                            'duration': -1}}
 
 
@@ -1466,13 +1466,17 @@ def update_streamers(server_id):
     db.set('Streamers.{}:announcement_channel'.format(server_id),
            announcement_channel)
     db.set('Streamers.{}:announcement_msg'.format(server_id), announcement_msg)
+
     db.delete('Streamers.{}:streamers'.format(server_id))
     db.delete('Streamers.{}:beam_streamers'.format(server_id))
     db.delete('Streamers.{}:hitbox_streamers'.format(server_id))
     db.delete('Streamers.{}:twitch_streamers'.format(server_id))
+
     for streamer in streamers:
         if streamer != "":
             db.sadd('Streamers.{}:streamers'.format(server_id),
+                    streamer.replace(' ', '_').lower())
+            db.sadd('Streamers.{}:twitch_streamers'.format(server_id),
                     streamer.replace(' ', '_').lower())
     for streamer in beam_streamers:
         if streamer != "":
