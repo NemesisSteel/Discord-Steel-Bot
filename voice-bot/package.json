@@ -8,7 +8,7 @@
   },
   "author": "Cookie",
   "dependencies": {
-    "discordie": "0.8.0",
+    "discordie": "^0.11.0",
     "node-dogstatsd": "0.0.6",
     "redis": "^2.6.0-1",
     "request": "^2.72.0",
