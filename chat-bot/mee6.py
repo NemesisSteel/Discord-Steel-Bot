@@ -120,6 +120,8 @@ class Mee6(discord.Client):
         self.stats.incr('mee6.recv_messages')
         if message.channel.is_private:
             return
+        if message.author.__class__ != discord.Member:
+            return
 
         server = message.server
 
