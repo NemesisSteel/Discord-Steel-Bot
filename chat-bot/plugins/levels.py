@@ -195,15 +195,7 @@ class Levels(Plugin):
         # Comparing the level before and after
         new_level = self._get_level_from_xp(player_xp)
         if new_level != lvl:
-            # Updating rewards
-            try:
-                await self.update_rewards(message.server)
-            except Exception as e:
-                log.info('Cannot update rewards of server {}'.format(
-                    message.server.id
-                ))
-                log.info(e)
-            # Check if announcement is good
+                        # Check if announcement is good
             announcement_enabled = await storage.get('announcement_enabled')
             whisp = await storage.get('whisp')
             if announcement_enabled:
@@ -212,7 +204,6 @@ class Levels(Plugin):
                 if whisp:
                     dest = player
                     mention = player.name
-
                 announcement = await storage.get('announcement')
                 await self.mee6.send_message(dest, announcement.replace(
                     "{player}",
@@ -221,6 +212,15 @@ class Levels(Plugin):
                     "{level}",
                     str(new_level)
                 ))
+            # Updating rewards
+            try:
+                await self.update_rewards(message.server)
+            except Exception as e:
+                log.info('Cannot update rewards of server {}'.format(
+                    message.server.id
+                ))
+                log.info(e)
+
 
     async def get_rewards(self, server):
         storage = await self.get_storage(server)
