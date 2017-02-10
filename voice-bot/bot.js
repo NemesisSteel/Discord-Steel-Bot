@@ -10,7 +10,7 @@ var redisURL = process.env.REDIS_URL,
     shard_count = process.env.SHARD_COUNT || 0,
     threads = process.env.THREADS || 1,
     compression_level = process.env.COMPRESSION_LEVEL || 7,
-    datadog_url = process.env.DD_AGENT_URL.split("udp://")[1].split(":"),
+    datadog_url = (process.env.DD_AGENT_URL || 'udp://localhost:5433').split("udp://")[1].split(":"),
     youtubedl = require('youtube-dl');
 
 var utils = require('./utils');
@@ -113,7 +113,7 @@ function playRemote(music, guild, voiceConnectionInfo) {
         type: "ffmpeg",
         realtime: true,
         source: music.url,
-        outputArgs: ["-compression_level", compression_level]
+        inputArgs: ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "2"],
       });
       encoder.once("end", () => playOrNext(null, guild));
       encoder.play();
