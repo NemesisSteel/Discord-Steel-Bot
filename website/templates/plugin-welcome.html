@@ -11,9 +11,7 @@
 						<div class="form-group">
 							<input name=_csrf_token type=hidden value="{{ csrf }}">
 							<label class="control-label" for="welcome_message">Welcome message</label>
-							<textarea class="form-control input-lg welcome_message" name="welcome_message" id="welcome_message">
-								{{welcome_message}}
-							</textarea>
+							<textarea class="form-control input-lg welcome_message" name="welcome_message" id="welcome_message">{{welcome_message}}</textarea>
 							<div class="checkbox">
 								<label>
 									<input type="checkbox" name="private" {% if private %}checked{% endif %}> Send in Private Message
@@ -23,9 +21,7 @@
 								<strong>Tips: </strong> <i>{user}</i> refers to the new member, <i>{server}</i> to your server name.
 							</div>
 							<label class="control-label" for="gb_message">Good Bye message</label>
-							<textarea class="form-control input-lg gb_message" name="gb_message" id="gb_message">
-								{{gb_message}}
-							</textarea>
+							<textarea class="form-control input-lg gb_message" name="gb_message" id="gb_message">{{gb_message}}</textarea>
 							<div class="checkbox">
 								<label>
 									<input type="checkbox" name="gb_enabled" {% if gb_enabled %}checked{% endif %}> Enabled
