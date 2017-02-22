@@ -27,5 +27,11 @@ class PluginManager:
             if plugin.is_global:
                 plugins.append(plugin)
             if plugin.__class__.__name__ in plugin_names:
+                if hasattr(plugin, 'buff_name'):
+                    buff_ok = await self.db.redis.get('buffs:{}:{}'.format(server.id,
+                                                                           plugin.buff_name))
+                    if not buff_ok:
+                        continue
+
                 plugins.append(plugin)
         return plugins
