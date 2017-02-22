@@ -33,11 +33,14 @@ class Mee6(discord.Client):
 
     async def ping(self):
         PING_INTERVAL = 3
-        key = 'mee6-gateway-{}-{}'.format(self.shard_id,
+        key = 'mee6.gateway.{}-{}'.format(self.shard_id,
                                           self.shard_count)
         while True:
             if self.is_logged_in:
+                self.stats.service_check(key, 0)
                 await self.db.redis.setex(key, PING_INTERVAL + 2, '1')
+            else:
+                self.stats.service_check(key, 2)
 
             await asyncio.sleep(PING_INTERVAL)
 
