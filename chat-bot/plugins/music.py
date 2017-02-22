@@ -32,14 +32,14 @@ class Music(Plugin):
              description="Makes me play the next song in the queue",
              usage='!play')
     async def play(self, m, args):
-        music = await self.pop_music(m.server)
-        if not music:
-            response = 'Nothing to play... :grimacing:'
-            return await self.mee6.send_message(m.channel, response)
-
         voice = m.server.voice_client
         if not voice:
             response = "I'm not connected to any voice channel :grimacing:..."
+            return await self.mee6.send_message(m.channel, response)
+
+        music = await self.pop_music(m.server)
+        if not music:
+            response = 'Nothing to play... :grimacing:'
             return await self.mee6.send_message(m.channel, response)
 
         try:
@@ -54,14 +54,14 @@ class Music(Plugin):
              require_one_of_roles="allowed_roles",
              usage='!next')
     async def next(self, m, args):
-        music = await self.pop_music(m.server)
-        if not music:
-            response = 'Nothing to play... :grimacing:'
-            return await self.mee6.send_message(m.channel, response)
-
         voice = m.server.voice_client
         if not voice:
             response = "I'm not connected to any voice channel :grimacing:..."
+            return await self.mee6.send_message(m.channel, response)
+
+        music = await self.pop_music(m.server)
+        if not music:
+            response = 'Nothing to play... :grimacing:'
             return await self.mee6.send_message(m.channel, response)
 
         try:
@@ -140,9 +140,23 @@ class Music(Plugin):
             response = "You are not in a voice channel."
             return await self.mee6.send_message(message.channel, response)
 
-        voice = await self.mee6.join_voice_channel(voice_channel)
+        voice = message.server.voice_client
+        if voice:
+            await voice.move_to(voice_channel)
+        else:
+            await self.mee6.join_voice_channel(voice_channel)
+
         response = "Connecting to voice channel **{}**".format(voice_channel.name)
         await self.mee6.send_message(message.channel, response)
+
+    @command(pattern='^!leave',
+             description='Makes me leave my current voice channel',
+             require_one_of_roles="allowed_roles",
+             usage='!leave')
+    async def leave(self, message, args):
+        vc = message.server.voice_client
+        if message.server.voice_client:
+            await vc.disconnect()
 
     @command(pattern='^!playlist$',
              description="Shows the songs in the playlist",
