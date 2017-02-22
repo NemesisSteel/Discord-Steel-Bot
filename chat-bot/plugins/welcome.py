@@ -23,7 +23,6 @@ class Welcome(Plugin):
         channel_name = await storage.get('channel_name')
 
         private = await storage.get('private')
-        print(private)
         if private:
             destination = member
         else:
