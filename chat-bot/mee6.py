@@ -37,10 +37,10 @@ class Mee6(discord.Client):
                                           self.shard_count)
         while True:
             if self.is_logged_in:
-                self.stats.service_check(key, 0)
+                self.stats.check(key, 'OK')
                 await self.db.redis.setex(key, PING_INTERVAL + 2, '1')
             else:
-                self.stats.service_check(key, 2)
+                self.stats.check(key, 'Critical')
 
             await asyncio.sleep(PING_INTERVAL)
 

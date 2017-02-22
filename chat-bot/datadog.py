@@ -40,5 +40,5 @@ class DDAgent:
         pass
 
     @existance_check
-    def service_check(self, *args, **kwargs):
+    def check(self, *args, **kwargs):
         pass
