@@ -1,6 +1,6 @@
 FROM python:3.5
+RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y libffi-dev
-RUN apt-get install -y python3.5-dev
 RUN apt-get install -y git
 ADD requirements.txt /requirements.txt
 RUN pip install --upgrade -r requirements.txt
