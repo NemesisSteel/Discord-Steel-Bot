@@ -4,10 +4,11 @@ import os
 import json
 import functools
 import discord
-from sys import platform
 
+from sys import platform
 from plugin import Plugin
 from decorators import command
+from collections import defaultdict
 
 if not discord.opus.is_loaded():
     if platform == "linux" or platform == "linux2":
@@ -22,6 +23,8 @@ class Music(Plugin):
     fancy_name = "Music"
     buff_name = "music"
     players = dict()
+
+    play_locks = defaultdict(asyncio.Lock)
     call_next = True
 
     @command(pattern='^!play$',
@@ -102,6 +105,9 @@ class Music(Plugin):
         return n
 
     async def _play(self, guild, music):
+        lock = self.play_locks[guild.id]
+        await lock.acquire()
+
         voice = guild.voice_client
         opts = {
          'default_search': 'auto',
@@ -121,6 +127,8 @@ class Music(Plugin):
         self.players[guild.id] = player
         player.volume = 0.6
         player.start()
+
+        lock.release()
 
     @command(pattern='^!join',
              description="Makes me join your current voice channel",
