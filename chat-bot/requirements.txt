@@ -1,7 +1,7 @@
 # Latest discord.py
 aioredis
 motor
-aiomeasures
+git+https://github.com/cookkkie/aiomeasures.git
 BeautifulSoup4
 raven
 raven_aiohttp
