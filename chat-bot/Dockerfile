@@ -1,4 +1,4 @@
-FROM python:3.5
+FROM python:3.4-wheezy
 
 ENV DEBIAN_FRONTEND noninteractive
 # Update and install minimal.
