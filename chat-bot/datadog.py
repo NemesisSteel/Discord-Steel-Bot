@@ -22,6 +22,7 @@ class DDAgent:
 
         if dd_agent_url:
             self.agent = aiomeasures.Datadog(dd_agent_url)
+
     @existance_check
     def send(self, *args, **kwargs):
         pass
@@ -36,4 +37,8 @@ class DDAgent:
 
     @existance_check
     def incr(self, *args, **kwargs):
+        pass
+
+    @existance_check
+    def service_check(self, *args, **kwargs):
         pass
