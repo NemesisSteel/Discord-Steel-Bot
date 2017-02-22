@@ -7,6 +7,7 @@ from plugins.help import Help
 from plugins.levels import Levels
 from plugins.welcome import Welcome
 from plugins.moderator import Moderator
+from plugins.messages import Messages
 #from plugins.early_backers import EarlyBackers
 from plugins.music import Music
 #from plugins.reddit import Reddit
