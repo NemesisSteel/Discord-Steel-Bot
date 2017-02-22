@@ -11,7 +11,7 @@ from decorators import command
 
 if not discord.opus.is_loaded():
     if platform == "linux" or platform == "linux2":
-        discord.opus.load_opus('libopus.so')
+        discord.opus.load_opus('./libopus.so')
     elif platform == "darwin":
         discord.opus.load_opus('libopus.dylib')
 
