@@ -69,6 +69,10 @@ class Storage():
         key = self.namespace + key
         return await self.redis.lpush(key, value, *values)
 
+    async def lpop(self, key, *values):
+        key = self.namespace + key
+        return await self.redis.lpop(key, *values)
+
     async def lrange(self, key, start, stop):
         key = self.namespace + key
         return await self.redis.lrange(key, start, stop)
@@ -83,3 +87,7 @@ class Storage():
 
     async def ltrim(self, start, stop):
         return await self.redis.ltrim(start, stop)
+
+    async def rpush(self, key, value, *values):
+        key = self.namespace + key
+        return await self.redis.rpush(key, value, *values)
