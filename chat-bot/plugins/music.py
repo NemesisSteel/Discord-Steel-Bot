@@ -110,6 +110,7 @@ class Music(Plugin):
 
         curr_player = self.players.get(guild.id)
         if curr_player:
+            self.call_next = False
             curr_player.stop()
 
         await self.set_np(music, guild)
