@@ -1,6 +1,7 @@
 import discord
 import logging
 import os
+import asyncio
 from plugin_manager import PluginManager
 from database import Db
 from datadog import DDAgent
