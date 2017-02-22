@@ -30,6 +30,16 @@ class Mee6(discord.Client):
     def run(self, *args):
         self.loop.run_until_complete(self.start(*args))
 
+    async def ping(self):
+        PING_INTERVAL = 3
+        key = 'mee6-gateway-{}-{}'.format(self.shard_id,
+                                          self.shard_count)
+        while True:
+            if self.is_logged_in:
+                await self.db.redis.setex(key, PING_INTERVAL + 2, '1')
+
+            await asyncio.sleep(PING_INTERVAL)
+
     async def on_ready(self):
         """Called when the bot is ready.
 
@@ -39,18 +49,11 @@ class Mee6(discord.Client):
         """
         log.info('Connected to the database')
 
-        if hasattr(self, 'shard_id'):
-            msg = 'Chat Shard {}/{} restarted'.format(
-                self.shard_id,
-                self.shard_count
-            )
-        else:
-            msg = 'Mee6 Chat restarted'
-        self.stats.event(msg, 'Server count: {}'.format(len(self.servers)))
-
         await self.add_all_servers()
         for plugin in self.plugins:
             self.loop.create_task(plugin.on_ready())
+
+        self.loop.create_task(self.ping())
 
     async def add_all_servers(self):
         """Syncing all the servers to the DB"""
