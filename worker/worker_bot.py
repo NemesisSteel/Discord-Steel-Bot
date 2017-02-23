@@ -5,6 +5,9 @@ import json
 import logging
 
 from time import time
+from discord_types import Message, Guild, Member
+from plugins.printer import Printer
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,6 +29,10 @@ EVENTS = {'MESSAGE_CREATE',
           'MEMBER_JOIN',
           'MEMBER_REMOVE'}
 
+TYPES = {'MESSAGE': Message,
+         'GUILD': Guild,
+         'MEMBER': Member}
+
 LISTENERS_COUNT = 100
 
 class WorkerBot(object):
@@ -42,8 +49,18 @@ class WorkerBot(object):
         self.log('Connected to redis database')
 
         self.listeners = []
+        self.plugins = []
+
+    def load_plugin(self, *plugins):
+        """ Loads plugins """
+        for Plugin in plugins:
+            fmt = 'Plugin {} loaded'
+            self.log(fmt.format(Plugin.__name__))
+
+            self.plugins.append(Plugin(self))
 
     def broker_connection(self):
+        """ Gets a broker connection """
         return redis.from_url(self.broker_url,
                               decode_responses=True)
 
@@ -52,18 +69,40 @@ class WorkerBot(object):
             self.dispatch(event_name, payload)
         return _dispatch
 
+    def get_plugins(self, guild):
+        return [Printer(self)]
+
+    def cast(self, o_type):
+        def caster(data):
+            if data is None:
+                return None
+            return o_type(data)
+        return caster
+
     def dispatch(self, event_name, payload):
-        guild = payload['g']
+        """ Dispatches events to plugins & co """
+        o_type = TYPES[event_name.split('_')[0]]
+        cast = self.cast(o_type)
+
+        guild = Guild(payload['guild'])
         timestamp = payload['ts']
 
-        data = payload.get('d')
-        before = payload.get('b')
-        after = payload.get('a')
+        data = cast(payload.get('data'))
+        before = cast(payload.get('before'))
+        after = cast(payload.get('after'))
 
         diff = time() - timestamp
         self.log('Received {} +{}'.format(event_name, diff))
 
+        enabled_plugins = self.get_plugins(guild)
+        for plugin in enabled_plugins:
+            if data:
+                plugin.dispatch(event_name.lower(), guild, data)
+            else:
+                plugin.dispatch(event_name.lower(), guild, before, after)
+
     def listener_fact(self):
+        """ Returns a listener that'll listen to every event type """
         keys = list(map(lambda e: 'discord.events.{}'.format(e),
                         EVENTS))
         conn = self.broker_connection()
