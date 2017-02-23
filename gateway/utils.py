@@ -34,7 +34,7 @@ def dump_member(member):
                 nick=member.nick,
                 colour=member.colour.value,
                 top_role=top_role,
-                server_permissions=int(member.server_permissions.value))
+                guild_pemissions=int(member.server_permissions.value))
 
 @safe_none
 def dump_channel(channel):
@@ -72,7 +72,7 @@ def dump_message(message):
                 author=dump_member(message.author),
                 content=message.content,
                 channel=dump_channel(message.channel),
-                server=dump_server(message.server),
+                guild=dump_server(message.server),
                 mention_everyone=message.mention_everyone,
                 pinned=message.pinned,
                 clean_content=message.clean_content)

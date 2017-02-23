@@ -78,34 +78,34 @@ class GatewayBot(discord.Client):
 
     def event(self, event_type, server, before, after=None):
         """
-            g: guild
+            guild: guild
             ts: event timestamp
-            t: event type
-            p: producer name (gateway-xx-xx)
-            d: data
-            b: before
-            a: after
+            type: event type
+            producer: producer name (gateway-xx-xx)
+            data: data
+            before: before
+            after: after
         """
-        e = {'g': dump(server),
+        e = {'guild': dump(server),
              'ts': time(),
-             't': event_type,
-             'p': self.gateway_repr}
+             'type': event_type,
+             'producer': self.gateway_repr}
         if after:
-            e['b'] = dump(before)
-            e['a'] = dump(after)
+            e['before'] = dump(before)
+            e['after'] = dump(after)
         else:
-            e['d'] = dump(before)
+            e['data'] = dump(before)
 
         return e
 
     async def send_event(self, *args, **kwargs):
         e = self.event(*args, **kwargs)
 
-        self.log("{event}:{gid} @ {ts}".format(event=e['t'],
-                                                    gid=e['g']['id'],
-                                                    ts=e['ts']))
+        self.log("{event}:{gid} @ {ts}".format(event=e['type'],
+                                                     gid=e['guild']['id'],
+                                                     ts=e['ts']))
 
-        await self.send('discord.events.{}'.format(e['t']), e)
+        await self.send('discord.events.{}'.format(e['type']), e)
 
     async def on_message(self, message):
         # Ignore private messages
