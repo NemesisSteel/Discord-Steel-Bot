@@ -70,7 +70,9 @@ class WorkerBot(object):
         return _dispatch
 
     def get_plugins(self, guild):
-        return [Printer(self)]
+        enabled_plugins = self.redis.smembers('plugins:{}'.format(guild.id))
+        return filter(lambda p: p.__class__.__name__ in enabled_plugins,
+                      self.plugins)
 
     def cast(self, o_type):
         def caster(data):
@@ -126,5 +128,4 @@ class WorkerBot(object):
             self.log('Starting listener {}-{}'.format(_, LISTENERS_COUNT))
 
         gevent.joinall(self.listeners)
-
 
