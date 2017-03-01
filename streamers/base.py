@@ -4,12 +4,18 @@ import disco
 import requests
 import logging
 import time
+import re
+import gevent
 
 from disco.types.message import (MessageEmbed, MessageEmbedField,
 MessageEmbedFooter, MessageEmbedImage, MessageEmbedThumbnail,
 MessageEmbedVideo, MessageEmbedAuthor)
 from disco.client import Client, ClientConfig
+from disco.api.http import APIException
 from random import randint
+from gevent import monkey
+
+monkey.patch_all()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,6 +37,22 @@ class Streamer(object):
     stream_viewers_count=''
     color=0x6441A4
     platform_name=''
+
+    @property
+    def dict(self):
+        return dict(name=self.name,
+                    display_name=self.display_name,
+                    profile_url=self.profile_url,
+                    avatar=self.avatar,
+                    is_live=self.is_live,
+                    stream_url=self.stream_url,
+                    stream_game=self.stream_game,
+                    stream_id=self.stream_id,
+                    stream_title=self.stream_title,
+                    stream_preview=self.stream_preview,
+                    stream_viewers_count=self.stream_viewers_count,
+                    color=self.color,
+                    platform_name=self.platform_name)
 
     @property
     def embed(self):
@@ -55,19 +77,18 @@ class Streamer(object):
         image.url = self.stream_preview + '?rand={}'.format(randint(0, 999999))
         e.image = image
 
-
         footer = MessageEmbedFooter()
         footer.text = self.platform_name
         e.footer = footer
 
-        if self.stream_game is not None:
+        if self.stream_game:
             game_field = MessageEmbedField()
             game_field.name = 'Played Game'
             game_field.value = self.stream_game
             game_field.inline = True
             e.fields.append(game_field)
 
-        if self.stream_viewers_count is not None:
+        if self.stream_viewers_count or self.stream_viewers_count == 0:
             viewers_field = MessageEmbedField()
             viewers_field.name = 'Viewers'
             viewers_field.value = str(self.stream_viewers_count)
@@ -112,16 +133,29 @@ class Base:
             self.log('OUT {}#{} >> {}'.format(guild, channel, message_formatted))
 
             try:
-                r = self.api.channels_messages_create(channel, message_formatted,
-                                                 embed=embed)
+                self.send_announce(guild, channel, message_formatted, embed)
                 self.db.sadd(check_key, streamer.stream_id)
             except Exception as e:
+                self.log('----')
                 self.log('Error occured when sending update to {}#{} {}'.format(guild,
                                                                                 channel,
                                                                                 streamer.name))
                 self.log(e.msg)
                 self.log(e.content)
                 self.log(e)
+                self.log(streamer.dict)
+                self.log('----')
+
+    def send_announce(self, guild, channel, message, embed, retry=0):
+        try:
+            r = self.api.channels_messages_create(int(channel), message,
+                                                  embed=embed)
+        except APIException as e:
+            # Unknows Channel
+            if e.code == 10003 and retry < 1:
+                self.send_announce(guild, guild, message, embed, retry=retry+1)
+            else:
+                raise e
 
     def process(self):
         streamers = self.db.smembers('Streamers.*:{}'.format(self.platform_db_name))
@@ -133,6 +167,9 @@ class Base:
                 return streamer
             return streamer.split('/')[-1]
         streamers = list(map(extract, streamers))
+        # throw weird names
+        check = lambda s: re.match(r'^[a-zA-Z0-9_\-]*$', s)
+        streamers = list(filter(check, streamers))
 
         for streamers_chunk in chunks(list(streamers), self.chunk_size):
             # Collect streams infos
@@ -148,19 +185,11 @@ class Base:
                     is_plugin_enabled = lambda gid: self.db.sismember('plugins:{}'.format(gid),
                                                                       'Streamers')
 
-                    announcements_key = 'Streamers.{}:{}:annonuced'
-                    is_streamer_announced = lambda gid: self.db.sismember(announcements_key.format(
-                        gid,
-                        self.platform_db_name),
-                        streamer.stream_id
-                    )
-
-                    predicate = lambda gid: is_plugin_enabled(gid) and not is_streamer_announced(gid)
                     key = 'Streamers.*:{}:{}:guilds'.format(self.platform_db_name, streamer.name)
-                    subs = filter(predicate, self.db.smembers(key))
+                    subs = filter(is_plugin_enabled, self.db.smembers(key))
 
                     # Announce
-                    self.announce(streamer, *subs)
+                    gevent.spawn(self.announce, streamer, *subs)
             except Exception as e:
                 self.log('An error occured :/')
                 self.log(e)
