@@ -60,17 +60,19 @@ class Streamer(object):
         footer.text = self.platform_name
         e.footer = footer
 
-        game_field = MessageEmbedField()
-        game_field.name = 'Played Game'
-        game_field.value = self.stream_game
-        game_field.inline = True
-        e.fields.append(game_field)
+        if self.stream_game is not None:
+            game_field = MessageEmbedField()
+            game_field.name = 'Played Game'
+            game_field.value = self.stream_game
+            game_field.inline = True
+            e.fields.append(game_field)
 
-        viewers_field = MessageEmbedField()
-        viewers_field.name = 'Viewers'
-        viewers_field.value = self.stream_viewers_count
-        viewers_field.inline = True
-        e.fields.append(viewers_field)
+        if self.stream_viewers_count is not None:
+            viewers_field = MessageEmbedField()
+            viewers_field.name = 'Viewers'
+            viewers_field.value = str(self.stream_viewers_count)
+            viewers_field.inline = True
+            e.fields.append(viewers_field)
 
         return e
 
@@ -122,33 +124,39 @@ class Base:
                 self.log(e)
 
     def process(self):
-        streamers = self.db.smembers('Streamers.*:streamers')
+        streamers = self.db.smembers('Streamers.*:{}'.format(self.platform_db_name))
+        # only take none empty streamers
+        streamers = list(filter(lambda s: s, streamers))
         for streamers_chunk in chunks(list(streamers), self.chunk_size):
             # Collect streams infos
-            streams = self.get_streams(*streamers_chunk)
-            self.log('Getting streams {}'.format(','.join(streamers_chunk)))
+            try:
+                streams = self.get_streams(*streamers_chunk)
+                self.log('Getting streams {}'.format(','.join(streamers_chunk)))
 
-            # Convert streams to streamer dict
-            streamers = map(self.stream_to_streamer, streams)
+                # Convert streams to streamer dict
+                streamers = map(self.stream_to_streamer, streams)
 
-            for streamer in streamers:
-                # Get subscribed guilds
-                is_plugin_enabled = lambda gid: self.db.sismember('plugins:{}'.format(gid),
-                                                                  'Streamers')
+                for streamer in streamers:
+                    # Get subscribed guilds
+                    is_plugin_enabled = lambda gid: self.db.sismember('plugins:{}'.format(gid),
+                                                                      'Streamers')
 
-                announcements_key = 'Streamers.{}:{}:annonuced'
-                is_streamer_announced = lambda gid: self.db.sismember(announcements_key.format(
-                    gid,
-                    self.platform_db_name),
-                    streamer.stream_id
-                )
+                    announcements_key = 'Streamers.{}:{}:annonuced'
+                    is_streamer_announced = lambda gid: self.db.sismember(announcements_key.format(
+                        gid,
+                        self.platform_db_name),
+                        streamer.stream_id
+                    )
 
-                predicate = lambda gid: is_plugin_enabled(gid) and not is_streamer_announced(gid)
-                key = 'Streamers.*:{}:{}:guilds'.format(self.platform_db_name, streamer.name)
-                subs = filter(predicate, self.db.smembers(key))
+                    predicate = lambda gid: is_plugin_enabled(gid) and not is_streamer_announced(gid)
+                    key = 'Streamers.*:{}:{}:guilds'.format(self.platform_db_name, streamer.name)
+                    subs = filter(predicate, self.db.smembers(key))
 
-                # Announce
-                self.announce(streamer, *subs)
+                    # Announce
+                    self.announce(streamer, *subs)
+            except Exception as e:
+                self.log('An error occured :/')
+                self.log(e)
 
             time.sleep(self.sleep_time)
 
