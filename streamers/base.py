@@ -127,6 +127,13 @@ class Base:
         streamers = self.db.smembers('Streamers.*:{}'.format(self.platform_db_name))
         # only take none empty streamers
         streamers = list(filter(lambda s: s, streamers))
+        # try to extract some streamers
+        def extract(streamer):
+            if '/' not in streamer:
+                return streamer
+            return streamer.split('/')[-1]
+        streamers = list(map(extract, streamers))
+
         for streamers_chunk in chunks(list(streamers), self.chunk_size):
             # Collect streams infos
             try:
