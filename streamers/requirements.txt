@@ -1,0 +1,9 @@
+git+https://github.com/b1naryth1ef/disco.git
+gevent==1.1.2
+greenlet==0.4.10
+holster==1.0.9
+inflection==0.3.1
+redis==2.10.5
+requests==2.11.1
+six==1.10.0
+websocket-client==0.37.0
