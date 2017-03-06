@@ -122,7 +122,10 @@ class Base:
                 continue
 
             channel_key = 'Streamers.{}:announcement_channel'.format(guild)
-            channel = int(self.db.get(channel_key) or guild)
+            try:
+                channel = int(self.db.get(channel_key) or guild)
+            except ValueError:
+                channel = guild
 
             message_key = 'Streamers.{}:announcement_msg'.format(guild)
             message = self.db.get(message_key)
