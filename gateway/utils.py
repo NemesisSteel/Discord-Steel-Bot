@@ -34,13 +34,14 @@ def dump_member(member):
                 nick=member.nick,
                 colour=member.colour.value,
                 top_role=top_role,
-                guild_pemissions=int(member.server_permissions.value))
+                mention=member.mention,
+                guild_permissions=int(member.server_permissions.value))
 
 @safe_none
 def dump_channel(channel):
     return dict(id=channel.id,
                 name=channel.name,
-                topic=str(channel.topic),
+                topic=channel.topic,
                 position=channel.position)
 
 @safe_none
