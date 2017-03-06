@@ -66,44 +66,35 @@ class GatewayBot(discord.Client):
     async def ping(self):
         PING_INTERVAL = 10
 
-        data = {
-            'ts': time(),
-            'guild_count': len(self.servers),
-        }
-        payload = json.dumps(data)
+        while True:
+            data = {
+                'ts': time(),
+                'guild_count': len(self.servers),
+            }
+            payload = json.dumps(data)
 
-        await self.redis.setex(self.gateway_repr,
-                               PING_INTERVAL,
-                               payload)
+            await self.redis.setex(self.gateway_repr,
+                                   math.floor(PING_INTERVAL * 1.5),
+                                   payload)
+            await asyncio.sleep(PING_INTERVAL)
 
-    def event(self, event_type, server, before, after=None):
-        """
-            guild: guild
-            ts: event timestamp
-            type: event type
-            producer: producer name (gateway-xx-xx)
-            data: data
-            before: before
-            after: after
-        """
-        e = {'guild': dump(server),
-             'ts': time(),
-             'type': event_type,
-             'producer': self.gateway_repr}
-        if after:
-            e['before'] = dump(before)
-            e['after'] = dump(after)
-        else:
-            e['data'] = dump(before)
+    async def send_dispatch_event(self, event_type, server, before=None,
+                                  after=None):
+        e = dict(ts=time(),
+                 type=event_type,
+                 producer=self.gateway_repr,
+                 guild=dump(server))
 
-        return e
-
-    async def send_event(self, *args, **kwargs):
-        e = self.event(*args, **kwargs)
+        if before:
+            if after:
+                e['before'] = dump(before)
+                e['after'] = dump(after)
+            else:
+                e['data'] = dump(before)
 
         self.log("{event}:{gid} @ {ts}".format(event=e['type'],
-                                                     gid=e['guild']['id'],
-                                                     ts=e['ts']))
+                                               gid=e['guild']['id'],
+                                               ts=e['ts']))
 
         await self.send('discord.events.{}'.format(e['type']), e)
 
@@ -111,49 +102,67 @@ class GatewayBot(discord.Client):
         # Ignore private messages
         if not message.server:
             return
-        await self.send_event('MESSAGE_CREATE',
-                              message.server,
-                              message)
+        # Ignore WHs 
+        if message.author.__class__ is not discord.Member:
+            return
+
+        await self.send_dispatch_event('MESSAGE_CREATE',
+                                       message.server,
+                                       message)
 
     async def on_message_delete(self, message):
         # Ignore private messages
         if not message.server:
             return
-        await self.send_event('MESSAGE_DELETE',
-                              message.server,
-                              message)
+        # Ignore WHs 
+        if message.author.__class__ is not discord.Member:
+            return
+
+        await self.send_dispatch_event('MESSAGE_DELETE',
+                                       message.server,
+                                       message)
 
     async def on_message_edit(self, before, after):
         # Ignore private messages
         if not after.server:
             return
-        await self.send_event('MESSAGE_EDIT',
-                              after.server,
-                              before,
-                              after)
+        # Ignore WHs 
+        if after.author.__class__ is not discord.Member:
+            return
+
+        await self.send_dispatch_event('MESSAGE_EDIT',
+                                       after.server,
+                                       before,
+                                       after)
+
+    async def on_ready(self):
+        for server in list(self.servers):
+            self.loop.create_task(self.on_server_ready(server))
+
+    async def on_server_ready(self, server):
+        await self.send_dispatch_event('GUILD_READY',
+                                       server)
 
     async def on_server_join(self, server):
-        await self.send_event('GUILD_JOIN',
-                              server,
-                              server)
+        await self.send_dispatch_event('GUILD_JOIN',
+                                       server)
 
     async def on_server_remove(self, server):
-        await self.send_event('GUILD_REMOVE',
-                              server,
-                              server)
+        await self.send_dispatch_event('GUILD_REMOVE',
+                                       server)
 
     async def on_server_update(self, before, after):
-        await self.send_event('GUILD_UPDATE',
-                              after,
-                              before,
-                              after)
+        await self.send_dispatch_event('GUILD_UPDATE',
+                                       after,
+                                       before,
+                                       after)
 
     async def on_member_join(self, member):
-        await self.send_event('MEMBER_JOIN',
-                              member.server,
-                              member)
+        await self.send_dispatch_event('MEMBER_JOIN',
+                                       member.server,
+                                       member)
 
     async def on_member_remove(self, member):
-        await self.send_event('MEMBER_REMOVE',
-                              member.server,
-                              member)
+        await self.send_dispatch_event('MEMBER_REMOVE',
+                                       member.server,
+                                       member)
