@@ -31,6 +31,7 @@ class Member:
         self.nick = member.get('nick')
         self.colour = member.get('colour')
         self.top_role = Role(member.get('top_role'))
+        self.mention = member.get('mention')
         self.guild_permissions = member.get('guild_permissions')
 
 
