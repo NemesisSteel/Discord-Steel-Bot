@@ -7,6 +7,9 @@ import logging
 from time import time
 from discord_types import Message, Guild, Member
 from plugins.printer import Printer
+from guild_storage import GuildStorage
+from disco.client import Client, ClientConfig
+from constants import EVENTS, TIMEOUT
 
 
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +26,7 @@ def parse_redis_url(redis_url):
 EVENTS = {'MESSAGE_CREATE',
           'MESSAGE_DELETE',
           'MESSAGE_EDIT',
+          'GUILD_READY',
           'GUILD_JOIN',
           'GUILD_REMOVE',
           'GUILD_UPDATE',
@@ -48,6 +52,11 @@ class WorkerBot(object):
                                     decode_responses=True)
         self.log('Connected to redis database')
 
+        discord_config = ClientConfig()
+        discord_config.token = kwargs.get('discord_token')
+        discord_client = Client(discord_config)
+        self.api = discord_client.api
+
         self.listeners = []
         self.plugins = []
 
@@ -64,14 +73,10 @@ class WorkerBot(object):
         return redis.from_url(self.broker_url,
                               decode_responses=True)
 
-    def get_dispatch(self, event_name, payload):
-        def _dispatch():
-            self.dispatch(event_name, payload)
-        return _dispatch
-
     def get_plugins(self, guild):
         enabled_plugins = self.redis.smembers('plugins:{}'.format(guild.id))
-        return filter(lambda p: p.__class__.__name__ in enabled_plugins,
+        return filter(lambda p: p.__class__.__name__ in enabled_plugins or \
+                      p.__global__,
                       self.plugins)
 
     def cast(self, o_type):
@@ -95,13 +100,22 @@ class WorkerBot(object):
 
         diff = time() - timestamp
         self.log('Received {} +{}'.format(event_name, diff))
+        if diff > TIMEOUT:
+            self.log('Droping {}'.format(event_name, diff))
+            return
 
-        enabled_plugins = self.get_plugins(guild)
+
+        enabled_plugins = list(self.get_plugins(guild))
         for plugin in enabled_plugins:
+            guild.storage = GuildStorage(guild.id,
+                                         plugin.__class__.__name__,
+                                         self.redis)
             if data:
-                plugin.dispatch(event_name.lower(), guild, data)
+                plugin.dispatch(event_name, guild, data)
+            elif before:
+                plugin.dispatch(event_name, guild, before, after)
             else:
-                plugin.dispatch(event_name.lower(), guild, before, after)
+                plugin.dispatch(event_name, guild)
 
     def listener_fact(self):
         """ Returns a listener that'll listen to every event type """
@@ -114,8 +128,7 @@ class WorkerBot(object):
                 if data:
                     event_name = queue.split('.')[-1]
                     data = json.loads(data)
-                    gevent.spawn(self.get_dispatch(event_name, data))
-                gevent.sleep(0.01)
+                    gevent.spawn(self.dispatch, event_name, data)
 
         return loop
 
