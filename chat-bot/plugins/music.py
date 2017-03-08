@@ -124,6 +124,7 @@ class Music(Plugin):
         player = await voice.create_ytdl_player(music['url'],
                                                 ytdl_options=opts,
                                                 after=self.sync_next(guild))
+        self.call_next[guild.id] = True
         self.players[guild.id] = player
         player.volume = 0.6
         player.start()
