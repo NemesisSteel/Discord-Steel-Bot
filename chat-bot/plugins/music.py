@@ -25,7 +25,7 @@ class Music(Plugin):
     players = dict()
 
     play_locks = defaultdict(asyncio.Lock)
-    call_next = True
+    call_next = defaultdict(lambda: True)
 
     @command(pattern='^!play$',
              require_one_of_roles="allowed_roles",
@@ -78,7 +78,7 @@ class Music(Plugin):
     async def stop(self, m, args):
         curr_player = self.players.get(m.server.id)
         if curr_player:
-            self.call_next = False
+            self.call_next[m.server.id] = False
             curr_player.stop()
 
     async def _next(self, guild):
@@ -99,9 +99,9 @@ class Music(Plugin):
 
     def sync_next(self, guild):
         def n():
-            if self.call_next:
+            if self.call_next[guild.id]:
                 self.mee6.loop.create_task(self._next(guild))
-            self.call_next = True
+            self.call_next[guild.id] = True
         return n
 
     async def _play(self, guild, music):
@@ -116,7 +116,7 @@ class Music(Plugin):
 
         curr_player = self.players.get(guild.id)
         if curr_player:
-            self.call_next = False
+            self.call_next[guild.id] = False
             curr_player.stop()
 
         await self.set_np(music, guild)
