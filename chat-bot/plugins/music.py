@@ -4,11 +4,14 @@ import os
 import json
 import functools
 import discord
+import logging
 
 from sys import platform
 from plugin import Plugin
 from decorators import command
 from collections import defaultdict
+
+log = logging.getLogger('discord').info
 
 if not discord.opus.is_loaded():
     if platform == "linux" or platform == "linux2":
@@ -114,20 +117,29 @@ class Music(Plugin):
          'quiet': True,
         }
 
+        log('checkin curr_player')
         curr_player = self.players.get(guild.id)
         if curr_player:
+            log(self.players)
             self.call_next[guild.id] = False
+            log('stopping curr_player')
             curr_player.stop()
+            log('curr player stopped')
 
         await self.set_np(music, guild)
 
+        log('creating player')
         player = await voice.create_ytdl_player(music['url'],
                                                 ytdl_options=opts,
                                                 after=self.sync_next(guild))
+        log(player)
+        log('player created')
         self.call_next[guild.id] = True
         self.players[guild.id] = player
         player.volume = 0.6
+        log('starting player')
         player.start()
+        log('player started')
 
         lock.release()
 
