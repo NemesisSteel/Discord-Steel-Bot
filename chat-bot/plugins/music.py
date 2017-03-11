@@ -101,7 +101,12 @@ class Music(Plugin):
             print(response)
 
     def sync_next(self, guild):
-        def n():
+        def n(player):
+            if player.error:
+                e = player.error
+                import traceback
+                log('Error from the player')
+                log(traceback.format_exception(type(e), e, None))
             if self.call_next[guild.id]:
                 self.mee6.loop.create_task(self._next(guild))
             self.call_next[guild.id] = True
