@@ -1,4 +1,18 @@
+import re
+
 from functools import wraps
+
+def find(predicate, iterable):
+    return next(filter(predicate, iterable), None)
+
+def parse_redis_url(redis_url):
+	pattern = r'redis:\/\/([a-zA-Z0-9.]*):?([0-9]*)?'
+	result = re.match(pattern, redis_url).groups()
+
+	if result[1]:
+		return (result[0], int(result[1]))
+
+	return (result[0], 6379)
 
 def safe_none(f):
     @wraps(f)
@@ -18,7 +32,7 @@ def dump_role(role):
                 position=role.position,
                 managed=role.managed,
                 mentionable=role.mentionable,
-                is_everyone=role.is_everyone,
+                is_default=role.is_default(),
                 created_at=str(role.created_at),
                 mention=role.mention)
 
@@ -35,54 +49,66 @@ def dump_member(member):
                 colour=member.colour.value,
                 top_role=top_role,
                 mention=member.mention,
-                guild_permissions=int(member.server_permissions.value))
+                guild_permissions=int(member.guild_permissions.value))
 
 @safe_none
-def dump_channel(channel):
+def dump_text_channel(channel):
     return dict(id=channel.id,
                 name=channel.name,
                 topic=channel.topic,
                 position=channel.position)
 
 @safe_none
-def dump_server(server):
-    roles = list(map(dump_role, server.roles))
-    owner = dump_member(server.owner)
-    me = dump_member(server.me)
-    default_channel = dump_channel(server.default_channel)
-    channels = list(map(dump_channel,
-                        server.channels))
-    return dict(id=server.id,
-                name=server.name,
+def dump_voice_channel(channel):
+    return dict(id=channel.id,
+                name=channel.name,
+                bitrate=channel.bitrate,
+                user_limit=channel.user_limit,
+                position=channel.position)
+
+@safe_none
+def dump_guild(guild):
+    roles = list(map(dump_role, guild.roles))
+    owner = dump_member(guild.owner)
+    me = dump_member(guild.me)
+    default_channel = dump_text_channel(guild.default_channel)
+    voice_channels = list(map(dump_voice_channel,
+                              guild.voice_channels))
+    text_channels = list(map(dump_text_channel,
+                             guild.text_channels))
+    return dict(id=guild.id,
+                name=guild.name,
                 roles=roles,
                 owner=owner,
                 me=me,
-                large=server.large,
-                icon_url=server.icon_url,
-                member_count=server.member_count,
-                created_at=str(server.created_at),
+                large=guild.large,
+                icon_url=guild.icon_url,
+                member_count=guild.member_count,
+                created_at=str(guild.created_at),
                 default_channel=default_channel,
-                channels=channels)
+                voice_channels=voice_channels,
+                text_channels=text_channels)
 
 @safe_none
 def dump_message(message):
     return dict(id=message.id,
                 edited_timestamp=str(message.edited_timestamp),
-                timestamp=str(message.timestamp),
                 tts=message.tts,
                 author=dump_member(message.author),
                 content=message.content,
-                channel=dump_channel(message.channel),
-                guild=dump_server(message.server),
+                channel=dump_text_channel(message.channel),
+                guild=dump_guild(message.guild),
                 mention_everyone=message.mention_everyone,
                 pinned=message.pinned,
                 clean_content=message.clean_content)
 
 SWITCHER = dict(Member=dump_member,
-                Server=dump_server,
-                Channel=dump_channel,
+                Guild=dump_guild,
+                VoiceChannel=dump_voice_channel,
+                TextChannel=dump_text_channel,
                 Message=dump_message,
                 Role=dump_role)
+
 def dump(obj):
     model_name = obj.__class__.__name__
     return SWITCHER[model_name](obj)
