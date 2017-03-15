@@ -1,8 +1,17 @@
-class Channel:
+class TextChannel:
     def __init__(self, channel):
         self.id = channel.get('id')
         self.name = channel.get('name')
         self.topic = channel.get('topic')
+        self.position = channel.get('position')
+
+
+class VoiceChannel:
+    def __init__(self, channel):
+        self.id = channel.get('id')
+        self.name = channel.get('name')
+        self.bitrate = channel.get('bitrate')
+        self.user_limit = channel.get('user_limit')
         self.position = channel.get('position')
 
 
@@ -16,7 +25,7 @@ class Role:
         self.position = role.get('position')
         self.managed = role.get('managed')
         self.mentionable = role.get('mentionable')
-        self.is_everyone = role.get('is_everyone')
+        self.is_default = role.get('is_default')
         self.created_at = role.get('created_at')
         self.mention = role.get('mention')
 
@@ -46,8 +55,9 @@ class Guild:
         self.icon_url = guild.get('icon_url')
         self.member_count = guild.get('member_count')
         self.created_at = guild.get('created_at')
-        self.default_channel = Channel(guild.get('default_channel'))
-        self.channels = list(map(Channel, guild.get('channels')))
+        self.default_channel = TextChannel(guild.get('default_channel'))
+        self.text_channels = list(map(TextChannel, guild.get('text_channels')))
+        self.voice_channels = list(map(VoiceChannel, guild.get('voice_channels')))
 
 
 class Message:
@@ -57,7 +67,7 @@ class Message:
         self.tts = message.get('tts')
         self.author = Member(message.get('author'))
         self.content = message.get('content')
-        self.channel = Channel(message.get('channel'))
+        self.channel = TextChannel(message.get('channel'))
         self.guild = Guild(message.get('guild'))
         self.mention_everyone = message.get('mention_everyone')
         self.pinned = message.get('pinned')
