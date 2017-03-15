@@ -12,6 +12,7 @@ from logger import Logger
 from time import time
 from aiohttp import web
 from rpc import RPCServer, rpc, RPCException
+from collections import defaultdict
 
 if not discord.opus.is_loaded():
     if platform == 'linux' or platform == 'linux2':
@@ -22,6 +23,7 @@ if not discord.opus.is_loaded():
 class GatewayBot(discord.Client, Logger):
 
     players = dict()
+    call_next = defaultdict(lambda: True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -215,8 +217,7 @@ class GatewayBot(discord.Client, Logger):
 
         return voice
 
-    @rpc
-    async def ytdl_play_song(self, guild, song_url):
+    async def _ytdl_play_song(self, guild, song_url, after=None):
         if type(guild) in (str, int):
             guild = self.get_guild(guild)
 
@@ -231,8 +232,8 @@ class GatewayBot(discord.Client, Logger):
             curr_player.stop()
 
         player = await voice.create_ytdl_player(url,
-                                                ytdl_options=opts)
-
+                                                ytdl_options=opts,
+                                                after=after)
         self.players[guild.id] = player
         player.volume = 0.6
         player.start()
@@ -240,3 +241,25 @@ class GatewayBot(discord.Client, Logger):
         lock.release()
 
         return voice
+
+    @rpc
+    async def ytdl_play_song(self, guild, song_url):
+        return self._ytdl_play_song(guild, song_url)
+
+    @rpc
+    async def ytdl_play_songs(self, guild, queue_name):
+        def n(player):
+            if player.error:
+                e = player.error
+                import traceback
+                log('Error from the player')
+                log(traceback.format_exception(type(e), e, None))
+            if self.call_next.get(guild.id):
+                self.loop.create_task(self.ytdl_play_songs(guild, queue_name))
+            self.call_next[guild.id] = True
+
+        song_url = redis.rpop(queue_name)
+        if song_url:
+            return await self._ytdl_play_song(guild, song_url, after=n)
+
+        return None
