@@ -3,13 +3,17 @@ import gevent.monkey
 import redis
 import json
 import logging
+import os
+import config
 
 from time import time
-from discord_types import Message, Guild, Member
+from discord_types import Message, Guild, Member, TextChannel
+from disco.api.http import APIException
 from plugins.printer import Printer
 from guild_storage import GuildStorage
 from disco.client import Client, ClientConfig
 from constants import EVENTS, TIMEOUT
+from utils import Embed, get_fail_safe_message
 
 
 logging.basicConfig(level=logging.INFO)
@@ -41,10 +45,8 @@ LISTENERS_COUNT = 100
 
 class WorkerBot(object):
     def __init__(self, *args, **kwargs):
-        self.broker_url = kwargs.get('broker_url',
-                                     'redis://localhost')
-        self.redis_url = kwargs.get('redis_url',
-                                    'redis://localhost')
+        self.broker_url = config.BROKER_URL or 'redis://localhost'
+        self.redis_url = config.REDIS_URL or 'redis://localhost'
 
         self.log = logging.getLogger('worker').info
 
@@ -53,7 +55,7 @@ class WorkerBot(object):
         self.log('Connected to redis database')
 
         discord_config = ClientConfig()
-        discord_config.token = kwargs.get('discord_token')
+        discord_config.token = config.MEE6_TOKEN
         discord_client = Client(discord_config)
         self.api = discord_client.api
 
@@ -111,11 +113,10 @@ class WorkerBot(object):
                                          plugin.__class__.__name__,
                                          self.redis)
             if data:
-                plugin.dispatch(event_name, guild, data)
-            elif before:
-                plugin.dispatch(event_name, guild, before, after)
-            else:
-                plugin.dispatch(event_name, guild)
+                return plugin.dispatch(event_name, guild, data)
+            if before:
+                return plugin.dispatch(event_name, guild, before, after)
+            return plugin.dispatch(event_name, guild)
 
     def listener_fact(self):
         """ Returns a listener that'll listen to every event type """
@@ -132,13 +133,40 @@ class WorkerBot(object):
 
         return loop
 
+    def send_message(self, destination, message="", embed=None,
+                     fail_safe_message=""):
+        """ Sends a message to a destination. Accepts member,
+            text channel, guild, or snowflake destination.
+        """
+        ACCEPTED_DESTINATIONS = [int, TextChannel, Member, Guild]
+        if destination.__class__ not in ACCEPTED_DESTINATIONS:
+            return
+
+        if hasattr(destination, 'id'):
+            destination = destination.id
+
+        if embed and embed.__class__ == dict:
+            embed = Embed(embed)
+
+        try:
+            r = self.api.channels_messages_create(destination, message,
+                                                  embed=embed)
+        except APIException as e:
+            # catch embed disabled
+            if e.code in (50004, 50013) and embed:
+                fs = get_fail_safe_message(embed)
+                r = self.api.channels_messages_create(destination, fs)
+            else:
+                raise e
+
+
     def run(self):
         for _ in range(1, LISTENERS_COUNT + 1):
             conn = self.broker_connection()
 
             listener = self.listener_fact()
             self.listeners.append(gevent.spawn(listener))
-            self.log('Starting listener {}-{}'.format(_, LISTENERS_COUNT))
+        self.log('Started {} listeners'.format(LISTENERS_COUNT))
 
         gevent.joinall(self.listeners)
 
