@@ -16,10 +16,18 @@ def dump_member(member):
                 guild_permissions=member.guild_permissions)
     return data
 
-def dump_channel(channel):
+def dump_text_channel(channel):
     data = dict(id=channel.id,
                 name=channel.name,
                 topic=channel.topic,
+                position=channel.position)
+    return data
+
+def dump_voice_channel(channel):
+    data = dict(id=channel.id,
+                name=channel.name,
+                bitrate=channel.bitrate,
+                user_limit=channel.user_limit,
                 position=channel.position)
     return data
 
@@ -28,7 +36,9 @@ def dump_guild(guild):
                 name=guild.name,
                 owner=dump_member(guild.owner),
                 me=dump_member(guild.me),
-                channels=list(map(dump_channel, guild.channels)),
+                text_channels=list(map(dump_text_channel, guild.text_channels)),
+                voice_channels=list(map(dump_voice_channel,
+                                        guild.voice_channels)),
                 large=guild.large,
                 icon_url=guild.icon_url,
                 member_count=guild.member_count,
