@@ -6,7 +6,6 @@ EVENTS = ('MESSAGE_CREATE',
           'GUILD_REMOVE',
           'GUILD_UPDATE',
           'MEMBER_JOIN',
-          'TIMEOUT',
           'MEMBER_REMOVE')
 
 TIMEOUT = 5
