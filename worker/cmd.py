@@ -1,33 +1,23 @@
 import re
+import inspect
+import gevent
 
-def hint(hint_str):
-    def decorator(f):
-        f.hint_str = f
-        return f
-    return decorator
+from logger import Logger
+from exceptions import BotException, NotFound
 
-def register(command):
-    def decorator(f):
-        regex = get_regex(command)
-        command_name = get_command_name(command)
+class Context(object): pass
 
-        f.is_command = True
-        f.regex = re.compile(regex)
-        f.command_name = command_name
-        return f
-    return decorator
-
-def get_command_name(command):
+def _get_command_name(command):
     pattern = r'^!([a-zA-Z0-9_\-]*)'
     match = re.match(pattern, command)
 
     return match and match.group(1)
 
-def get_command_regex(command):
+def _get_command_regex(command):
     pattern = '<(\w*):(\w*)>'
     args = re.findall(pattern, command)
 
-    command_name = get_command_name(command)
+    command_name = _get_command_name(command)
 
     regex = '^!{}'.format(command_name)
 
@@ -43,22 +33,95 @@ def get_command_regex(command):
 
     return regex
 
-def command_handler(command_func, message):
-    regex = command_func.regex
-    match = regex.match(message.content)
-    if not match:
-        return
+def hint(hint_str):
+    def decorator(f):
+        f.hint_str = f
+        return f
+    return decorator
 
-    args = match.groupdict()
+def require_roles(*roles):
+    def decorator(f):
+        f.roles = roles
+        return f
+    return decorator
 
-    ctx = object()
-    ctx.message = message
-    ctx.guild = message.guild
+def optional(f):
+    f.optional = True
+    return f
 
-    return command_func(ctx, **args)
+def register(command):
+    def decorator(f):
+        regex = _get_command_regex(command)
+        command_name = _get_command_name(command)
 
-"""
-@command.register('!mention <member:member> <text:str>')
-@command.hint('!mention [the member to mention] [the text to send]')
-def mention(self, ctx, member, text):
-"""
+        f.is_command = True
+        f.regex = re.compile(regex)
+        f.command_name = command_name
+        return f
+    return decorator
+
+
+class Response(object):
+    def __init__(self, message='', embed=None, fail_safe_message=''):
+        self.message = message
+        self.embed = embed
+        self.fail_safe_message = fail_safe_message
+
+
+class Command(Logger):
+
+    commands = []
+
+    def __init__(self, plugin):
+        self.plugin = plugin
+        self.bot = plugin.bot
+        self.plugin.register_listener('MESSAGE_CREATE',
+                                      self.on_message_create)
+        self.load_commands()
+
+    def __str__(self):
+        return '{}.command'.format(self.bot)
+
+    def get_commands(self):
+        plugin = self.plugin
+        methods = inspect.getmembers(plugin, inspect.ismethod)
+        is_command = lambda m: hasattr(m[1], 'is_command')
+        commands = list(filter(is_command, methods))
+        commands = list(map(lambda m: m[1], commands))
+        return commands
+
+    def load_commands(self):
+        self.commands = self.get_commands()
+
+    def on_message_create(self, guild, message):
+        for command in self.commands:
+            gevent.spawn(self.command_handler, command, message)
+
+    def command_handler(self, command_func, message):
+        regex = command_func.regex
+        match = regex.match(message.content)
+        if not match:
+            return
+
+        args = match.groupdict()
+        ctx = Context()
+        ctx.message = message
+        ctx.guild = message.guild
+
+        if command_func.optional:
+            check = ctx.guild.storage.get(command_func.command_name)
+            if not check:
+                return
+
+        try:
+            response = command_func(ctx, **args)
+        except NotFound as e:
+            response = Response("Sorry I didn't find anything 😭 ")
+        except BotException as e:
+            response = Response("An error occured in Mee6 land 🤒 ")
+
+        if response:
+            self.plugin.send_message(ctx.message.channel,
+                                     message=response.message,
+                                     embed=response.embed,
+                                     fail_safe_message=response.fail_safe_message)
