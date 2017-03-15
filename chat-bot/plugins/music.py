@@ -115,38 +115,38 @@ class Music(Plugin):
     async def _play(self, guild, music):
         lock = self.play_locks[guild.id]
         await lock.acquire()
+        try:
+            voice = guild.voice_client
+            opts = {
+             'default_search': 'auto',
+             'quiet': True,
+            }
 
-        voice = guild.voice_client
-        opts = {
-         'default_search': 'auto',
-         'quiet': True,
-        }
+            log('checkin curr_player')
+            curr_player = self.players.get(guild.id)
+            if curr_player:
+                log(self.players)
+                self.call_next[guild.id] = False
+                log('stopping curr_player')
+                curr_player.stop()
+                log('curr player stopped')
 
-        log('checkin curr_player')
-        curr_player = self.players.get(guild.id)
-        if curr_player:
-            log(self.players)
-            self.call_next[guild.id] = False
-            log('stopping curr_player')
-            curr_player.stop()
-            log('curr player stopped')
+            await self.set_np(music, guild)
 
-        await self.set_np(music, guild)
-
-        log('creating player')
-        player = await voice.create_ytdl_player(music['url'],
-                                                ytdl_options=opts,
-                                                after=self.sync_next(guild))
-        log(player)
-        log('player created')
-        self.call_next[guild.id] = True
-        self.players[guild.id] = player
-        player.volume = 0.6
-        log('starting player')
-        player.start()
-        log('player started')
-
-        lock.release()
+            log('creating player')
+            player = await voice.create_ytdl_player(music['url'],
+                                                    ytdl_options=opts,
+                                                    after=self.sync_next(guild))
+            log(player)
+            log('player created')
+            self.call_next[guild.id] = True
+            self.players[guild.id] = player
+            player.volume = 0.6
+            log('starting player')
+            player.start()
+            log('player started')
+        finally:
+            lock.release()
 
     @command(pattern='^!join',
              description="Makes me join your current voice channel",
