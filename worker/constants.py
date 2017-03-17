@@ -9,3 +9,4 @@ EVENTS = ('MESSAGE_CREATE',
           'MEMBER_REMOVE')
 
 TIMEOUT = 5
+
