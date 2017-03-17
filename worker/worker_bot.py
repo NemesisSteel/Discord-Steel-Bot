@@ -7,25 +7,18 @@ import os
 import config
 
 from time import time
-from discord_types import Message, Guild, Member, TextChannel
+from discord.types import Message, Guild, Member, TextChannel, Embed
 from disco.api.http import APIException
 from plugins.printer import Printer
-from guild_storage import GuildStorage
+from storage.redis import RedisStorage
 from disco.client import Client, ClientConfig
 from constants import EVENTS, TIMEOUT
-from utils import Embed, get_fail_safe_message
+from utils import parse_redis_url
 
 
 logging.basicConfig(level=logging.INFO)
 
 gevent.monkey.patch_all()
-
-def parse_redis_url(redis_url):
-    pattern = r'redis:\/\/([a-zA-Z0-9.]*):?([0-9]*)?'
-    result = re.match(pattern, redis_url).groups()
-    if result[1]:
-        return (result[0], int(result[1]))
-    return (result[0], 6379)
 
 EVENTS = {'MESSAGE_CREATE',
           'MESSAGE_DELETE',
@@ -43,10 +36,13 @@ TYPES = {'MESSAGE': Message,
 
 LISTENERS_COUNT = 100
 
+DEFAULT_BROKER_URL = 'redis://localhost'
+DEFAULT_REDIS_URL = 'redis://localhost'
+
 class WorkerBot(object):
     def __init__(self, *args, **kwargs):
-        self.broker_url = config.BROKER_URL or 'redis://localhost'
-        self.redis_url = config.REDIS_URL or 'redis://localhost'
+        self.broker_url = config.BROKER_URL or DEFAULT_BROKER_URL
+        self.redis_url = config.REDIS_URL or DEFAULT_BROKER_URL
 
         self.log = logging.getLogger('worker').info
 
@@ -77,8 +73,8 @@ class WorkerBot(object):
 
     def get_plugins(self, guild):
         enabled_plugins = self.redis.smembers('plugins:{}'.format(guild.id))
-        return filter(lambda p: p.__class__.__name__ in enabled_plugins or \
-                      p.__global__,
+        return filter(lambda p: p.name in enabled_plugins or \
+                      hasattr(p, '__global__'),
                       self.plugins)
 
     def cast(self, o_type):
@@ -109,14 +105,15 @@ class WorkerBot(object):
 
         enabled_plugins = list(self.get_plugins(guild))
         for plugin in enabled_plugins:
-            guild.storage = GuildStorage(guild.id,
-                                         plugin.__class__.__name__,
+            guild.storage = RedisStorage(guild.id,
+                                         plugin.name,
                                          self.redis)
             if data:
-                return plugin.dispatch(event_name, guild, data)
+                plugin.dispatch(event_name, guild, data)
             if before:
-                return plugin.dispatch(event_name, guild, before, after)
-            return plugin.dispatch(event_name, guild)
+                plugin.dispatch(event_name, guild, before, after)
+            if not data and not before:
+                plugin.dispatch(event_name, guild)
 
     def listener_fact(self):
         """ Returns a listener that'll listen to every event type """
@@ -133,8 +130,7 @@ class WorkerBot(object):
 
         return loop
 
-    def send_message(self, destination, message="", embed=None,
-                     fail_safe_message=""):
+    def send_message(self, destination, message="", embed=None):
         """ Sends a message to a destination. Accepts member,
             text channel, guild, or snowflake destination.
         """
@@ -154,8 +150,8 @@ class WorkerBot(object):
         except APIException as e:
             # catch embed disabled
             if e.code in (50004, 50013) and embed:
-                fs = get_fail_safe_message(embed)
-                r = self.api.channels_messages_create(destination, fs)
+                r = self.api.channels_messages_create(destination,
+                                                      embed.fail_safe_message)
             else:
                 raise e
 
