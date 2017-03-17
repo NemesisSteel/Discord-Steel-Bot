@@ -173,11 +173,11 @@ class Music(Plugin):
              usage='!leave')
     async def leave(self, message, args):
         vc = message.server.voice_client
-        self.log('Trying to leave channel, voice_client:')
-        self.log(vc)
+        log('Trying to leave channel, voice_client:')
+        log(vc)
         if message.server.voice_client:
             await vc.disconnect()
-            self.log('diconnected from channel')
+            log('diconnected from channel')
 
     @command(pattern='^!playlist$',
              description="Shows the songs in the playlist",
