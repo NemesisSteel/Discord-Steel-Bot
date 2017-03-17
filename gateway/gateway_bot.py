@@ -224,23 +224,23 @@ class GatewayBot(discord.Client, Logger):
         voice = self.get_voice_client(guild)
 
         lock = self.play_locs[guild.id]
-        await lock.acquire()
+        try:
+            await lock.acquire()
 
-        curr_player = self.players.get(guild.id)
-        if curr_player:
-            self.call_next[guild.id] = False
-            curr_player.stop()
+            curr_player = self.players.get(guild.id)
+            if curr_player:
+                self.call_next[guild.id] = False
+                curr_player.stop()
 
-        player = await voice.create_ytdl_player(url,
-                                                ytdl_options=opts,
-                                                after=after)
-        self.players[guild.id] = player
-        player.volume = 0.6
-        player.start()
-
-        lock.release()
-
-        return voice
+            player = await voice.create_ytdl_player(url,
+                                                    ytdl_options=opts,
+                                                    after=after)
+            self.players[guild.id] = player
+            player.volume = 0.6
+            player.start()
+        finally:
+            lock.release()
+            return voice
 
     @rpc
     async def ytdl_play_song(self, guild, song_url):
