@@ -5,6 +5,6 @@ RUN apt-get install -y git
 WORKDIR /
 ADD requirements.txt /requirements.txt
 RUN pip install --upgrade -r requirements.txt
-RUN python3 -m pip install -U https://github.com/cookkkie/discord.py/archive/async.zip#egg=discord.py[voice]
+RUN python3 -m pip install -U https://github.com/rapptz/discord.py/archive/async.zip#egg=discord.py[voice]
 ADD . /
 CMD ["python", "bot.py"]
