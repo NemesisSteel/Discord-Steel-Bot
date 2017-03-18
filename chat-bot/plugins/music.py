@@ -134,8 +134,10 @@ class Music(Plugin):
             await self.set_np(music, guild)
 
             log('creating player')
+            before_options = '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 2'
             player = await voice.create_ytdl_player(music['url'],
                                                     ytdl_options=opts,
+                                                    before_options=before_options,
                                                     after=self.sync_next(guild))
             log(player)
             log('player created')
