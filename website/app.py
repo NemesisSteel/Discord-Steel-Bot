@@ -586,18 +586,18 @@ def get_guild(server_id):
 def get_guild_members(server_id):
     headers = {'Authorization': 'Bot '+MEE6_TOKEN}
     members = []
-    print('lel')
 
     ttl = db.ttl('guild:{}:members'.format(server_id))
     if not ttl or ttl == -1:
-        print('ko')
         db.delete('guild:{}:members'.format(server_id))
 
     cached_members = db.get('guild:{}:members'.format(server_id))
     if cached_members:
-        print('loul2')
         return json.loads(cached_members)
 
+    # Quick fix for huge guilds
+    # preventing a timeout from the app
+    MAX_MEMBERS = 3000
     while True:
         params = {'limit': 1000}
         if len(members):
@@ -610,13 +610,11 @@ def get_guild_members(server_id):
         if r.status_code == 200:
             chunk = r.json()
             members += chunk
-        if chunk == []:
+        if chunk == [] or len(members) >= MAX_MEMBERS:
             break
 
     db.set('guild:{}:members'.format(server_id), json.dumps(members))
-    db.expire('guild:{}:members'.format(server_id), 30)
-
-    print('loul')
+    db.expire('guild:{}:members'.format(server_id), 300)
 
     return members
 
