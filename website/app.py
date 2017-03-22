@@ -1333,7 +1333,6 @@ def plugin_streamers(server_id):
         'beam_streamers': beam_streamers
     }
 
-
 @app.route('/dashboard/<int:server_id>/update_streamers', methods=['POST'])
 @plugin_method
 def update_streamers(server_id):
@@ -1360,7 +1359,12 @@ def update_streamers(server_id):
     STREAMERS_TYPES = ('streamers', 'hitbox_streamers', 'beam_streamers')
     for s_type in STREAMERS_TYPES:
         key = 'Streamers.{}:{}'.format(server_id, s_type)
-        corrector = lambda s: s.lower().replace(' ', '_')
+        def corrector(streamer):
+            r = re.compile('((https?:\/\/)?(www\.)?[a-zA-Z]*\.[a-zA-Z]*\/)?(.*)')
+            m = r.match(streamer).groups()
+            if m[-1]:
+                streamer = m[-1]
+            return streamer.lower().replace(' ', '_')
         old_streamers = list(db.smembers(key))
         new_streamers = list(map(corrector,
                                  request.form.get(s_type).split(',')))
