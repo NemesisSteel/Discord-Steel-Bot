@@ -147,6 +147,9 @@ class Music(Plugin):
             log('starting player')
             player.start()
             log('player started')
+        except Exception as e:
+            log('An error occured in _play')
+            log(str(e))
         finally:
             lock.release()
 
