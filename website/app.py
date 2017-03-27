@@ -1412,16 +1412,28 @@ def plugin_reddit(server_id):
     }
 
 
+subr = re.compile('(((https?:\/\/)?(www\.)?[a-zA-Z]*\.[a-zA-Z]*\/)|\/?r\/)?(.*)')
 @app.route('/dashboard/<int:server_id>/update_reddit', methods=['POST'])
 @plugin_method
 def update_reddit(server_id):
+    subs = db.smembers('Reddit.{}:subs'.format(server_id))
+    for s in subs:
+        if s == '':
+            continue
+        db.srem('Reddit.#:sub:{}:guilds'.format(s),
+                server_id)
+
     display_channel = request.form.get('display_channel')
     subs = request.form.get('subs').split(',')
     db.set('Reddit.{}:display_channel'.format(server_id), display_channel)
     db.delete('Reddit.{}:subs'.format(server_id))
     for sub in subs:
         if sub != "":
-            db.sadd('Reddit.{}:subs'.format(server_id), sub.lower())
+            s = subr.match(sub).groups()[-1].lower()
+            db.sadd('Reddit.#:subs', s)
+            db.sadd('Reddit.#:sub:{}:guilds'.format(s),
+                    server_id)
+            db.sadd('Reddit.{}:subs'.format(server_id), s)
 
     flash('Configuration updated with success!', 'success')
     return redirect(url_for('plugin_reddit', server_id=server_id))
