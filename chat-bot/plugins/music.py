@@ -180,6 +180,7 @@ class Music(Plugin):
         vc = message.server.voice_client
         log('Trying to leave channel, voice_client:')
         log(vc)
+        await self.mee6.ws.voice_state(message.server.id, None, self_mute=True)
         if message.server.voice_client:
             await vc.disconnect()
             log('diconnected from channel')
