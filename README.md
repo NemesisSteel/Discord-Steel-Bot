@@ -20,7 +20,7 @@ of this bot.
 ## How to contribute !
 
 If you want to create a plugin for the bot, do not hesitate to contact me in 
-[Mee6's discord server](https://discord.gg/0tOgeGSG9kVbtw7u) :wink:.
+[Mee6's discord server](https://discord.gg/mee6) :wink:.
 
 You have to be at least a little bit familiar with **asyncio** python library 
 and with python in general.
