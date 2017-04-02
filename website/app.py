@@ -921,7 +921,7 @@ def plugin_levels(server_id):
     db_banned_roles = db.smembers('Levels.{}:banned_roles'.format(server_id))\
         or []
     guild = get_guild(server_id)
-    guild_roles = guild['roles']
+    guild_roles = list(filter(lambda r: not r['managed'], guild['roles']))
     banned_roles = list(filter(
         lambda r: r['name'] in db_banned_roles or r['id'] in db_banned_roles,
         guild_roles
@@ -935,8 +935,7 @@ def plugin_levels(server_id):
                        r['id'])) or 0)
                    },
         guild_roles
-    )
-    )
+    ))
     cooldown = db.get('Levels.{}:cooldown'.format(server_id)) or 0
     return {
         'announcement': announcement,
