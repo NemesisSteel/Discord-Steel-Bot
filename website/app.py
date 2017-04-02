@@ -1300,12 +1300,12 @@ def plugin_git(server_id):
 @plugin_page('Streamers')
 def plugin_streamers(server_id):
     streamers = db.smembers('Streamers.{}:streamers'.format(server_id))
-    beam_streamers = db.smembers('Streamers.{}:beam_streamers'.format(
-        server_id))
+    #beam_streamers = db.smembers('Streamers.{}:beam_streamers'.format(
+    #    server_id))
     hitbox_streamers = db.smembers('Streamers.{}:hitbox_streamers'.format(
         server_id))
     streamers = ','.join(streamers)
-    beam_streamers = ','.join(beam_streamers)
+    #beam_streamers = ','.join(beam_streamers)
     hitbox_streamers = ','.join(hitbox_streamers)
     db_announcement_channel = db.get('Streamers.{}:announcement_channel'.format(
         server_id))
@@ -1328,8 +1328,8 @@ def plugin_streamers(server_id):
         'guild_channels': guild_channels,
         'announcement_msg': announcement_msg,
         'streamers': streamers,
-        'hitbox_streamers': hitbox_streamers,
-        'beam_streamers': beam_streamers
+        'hitbox_streamers': hitbox_streamers
+        #'beam_streamers': beam_streamers
     }
 
 @app.route('/dashboard/<int:server_id>/update_streamers', methods=['POST'])
@@ -1355,7 +1355,7 @@ def update_streamers(server_id):
            announcement_channel)
     db.set('Streamers.{}:announcement_msg'.format(server_id), announcement_msg)
 
-    STREAMERS_TYPES = ('streamers', 'hitbox_streamers', 'beam_streamers')
+    STREAMERS_TYPES = ('streamers', 'hitbox_streamers')
     for s_type in STREAMERS_TYPES:
         key = 'Streamers.{}:{}'.format(server_id, s_type)
         def corrector(streamer):
