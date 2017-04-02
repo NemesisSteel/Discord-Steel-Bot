@@ -1429,6 +1429,7 @@ def update_reddit(server_id):
     for sub in subs:
         if sub != "":
             s = subr.match(sub).groups()[-1].lower()
+            s = s.split('/')[-1]
             db.sadd('Reddit.#:subs', s)
             db.sadd('Reddit.#:sub:{}:guilds'.format(s),
                     server_id)
