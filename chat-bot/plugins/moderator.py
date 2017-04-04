@@ -6,6 +6,8 @@ import discord
 import logging
 import asyncio
 import re
+import calendar
+import time
 
 logs = logging.getLogger("discord")
 
@@ -31,20 +33,35 @@ class Moderator(Plugin):
         number = min(int(args[0]), 1000)
         if number < 1:
             return
+
+        def predicate(message):
+            timestamp = calendar.timegm(message.timestamp.timetuple())
+            now = time.time()
+
+            LIMIT = now - (3600 * 24 * 14)
+            return timestamp > LIMIT
+
         deleted_messages = await self.mee6.purge_from(
             message.channel,
-            limit=number+1
+            limit=number+1,
+            check=predicate
         )
 
-        message_number = len(deleted_messages) - 1
+        message_number = max(len(deleted_messages) - 1, 0)
+
+        if message_number == 0:
+            resp = "Deleted `0 message` 🙄  \n (I can't delete messages "\
+                      "older than 2 weeks due to discord limitations)"
+        else:
+            resp = "Deleted `{} message{}` 👌 ".format(message_number,
+                                                         "" if message_number <\
+                                                            2 else "s")
+
         confirm_message = await self.mee6.send_message(
             message.channel,
-            "`Deleted {} message{}!` :thumbsup: ".format(
-                message_number,
-                "" if message_number < 2 else "s"
-            )
+            resp
         )
-        await asyncio.sleep(3)
+        await asyncio.sleep(8)
 
         await self.mee6.delete_message(confirm_message)
 
@@ -57,18 +74,35 @@ class Moderator(Plugin):
         if not user:
             return
 
+        def predicate(m):
+            timestamp = calendar.timegm(m.timestamp.timetuple())
+            now = time.time()
+
+            LIMIT = now - (3600 * 24 * 14)
+            return timestamp > LIMIT and (m.author.id == user.id or m == message)
+
         deleted_messages = await self.mee6.purge_from(
             message.channel,
-            check=lambda m: m.author.id == user.id or m == message
+            check=predicate
         )
 
-        message_number = len(deleted_messages)
-        confirm = await self.mee6.send_message(
+        message_number = max(len(deleted_messages) - 1, 0)
+
+        if message_number == 0:
+            resp = "Deleted `0 message` 🙄  \n (I can't delete messages "\
+                      "older than 2 weeks due to discord limitations)"
+        else:
+            resp = "Deleted `{} message{}` 👌 ".format(message_number,
+                                                         "" if message_number <\
+                                                            2 else "s")
+
+        confirm_message = await self.mee6.send_message(
             message.channel,
-            "`Deleted {} messages!` :thumbsup: ".format(message_number)
+            resp
         )
-        await asyncio.sleep(3)
-        await self.mee6.delete_message(confirm)
+
+        await asyncio.sleep(8)
+        await self.mee6.delete_message(confirm_message)
 
     @command(pattern='^!mute <@!?([0-9]*)>$', db_check=True,
              require_one_of_roles="roles")
