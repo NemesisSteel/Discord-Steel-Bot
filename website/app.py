@@ -447,6 +447,7 @@ def server_check(f):
     return wrapper
 
 
+ADMINS = ['138362511190786048', '136777781005647872', '100737000973275136']
 def require_bot_admin(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -454,9 +455,10 @@ def require_bot_admin(f):
         user = get_user(session['api_token'])
         if not user:
             return redirect(url_for('logout'))
+
         guilds = get_user_guilds(session['api_token'])
         user_servers = get_user_managed_servers(user, guilds)
-        if str(server_id) not in map(lambda g: g['id'], user_servers):
+        if user['id'] not in ADMINS and str(server_id) not in map(lambda g: g['id'], user_servers):
             return redirect(url_for('select_server'))
 
         return f(*args, **kwargs)
