@@ -496,9 +496,8 @@ def plugin_page(plugin_name, buff=None):
                 return redirect(url_for('dashboard', server_id=server_id))
 
             db.sadd('plugins:{}'.format(server_id), plugin_name)
-            servers = get_user_guilds(session['api_token'])
-            server = list(filter(lambda g: g['id'] == str(server_id), servers))
-            server = server[0]
+
+            server = get_guild(server_id)
             enabled_plugins = db.smembers('plugins:{}'.format(server_id))
 
             ignored = db.get('user:{}:ignored'.format(user['id']))
