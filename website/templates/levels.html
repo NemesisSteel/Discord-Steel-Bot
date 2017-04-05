@@ -1,5 +1,6 @@
 {% extends 'dash_base.html' %}
 {% block dash_content %}
+{% set csrf =  csrf_token() %}
 	<div class="container">
 		<div class="row">
 			<div class="col-md-3">
@@ -31,7 +32,7 @@
 			</div>
 			<div class="col-md-9">
 				<h1>Leaderboard {% if is_admin %}
-						<small><a class="btn btn-warning btn-xs reset-all" href="{{url_for('reset_all_players', server_id=server.id)}}">RESET ALL</a></small>
+						<small><a class="btn btn-warning btn-xs reset-all" href="{{url_for('reset_all_players', server_id=server.id)}}?csrf={{csrf | string | urlencode }}">RESET ALL</a></small>
 					{% endif %}
 				</h1>
 				<div class="list-group">
@@ -60,7 +61,7 @@
 								<div class="col-md-2 col-sm-2 col-xs-2">
 									<h3>Level {{player['lvl']}}
 										{% if is_admin %}
-											<small><a class="reset" href="{{url_for('reset_player', player_id=player['id'], server_id=server.id)}}">reset</a></small>
+										<small><a class="reset" href="{{url_for('reset_player', player_id=player['id'], server_id=server.id)}}?csrf={{csrf | string | urlencode}}">reset</a></small>
 										{% endif %}
 									</h3>
 								</div>

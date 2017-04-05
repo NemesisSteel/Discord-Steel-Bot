@@ -1114,6 +1114,10 @@ def levels(server_id):
 @app.route('/levels/reset/<int:server_id>/<int:player_id>')
 @plugin_method
 def reset_player(server_id, player_id):
+    csrf = session.pop('_csrf_token', None)
+    if not csrf or csrf != request.args.get('csrf'):
+        abort(403)
+
     db.delete('Levels.{}:player:{}:xp'.format(server_id, player_id))
     db.delete('Levels.{}:player:{}:lvl'.format(server_id, player_id))
     db.srem('Levels.{}:players'.format(server_id), player_id)
@@ -1123,6 +1127,10 @@ def reset_player(server_id, player_id):
 @app.route('/levels/reset_all/<int:server_id>')
 @plugin_method
 def reset_all_players(server_id):
+    csrf = session.pop('_csrf_token', None)
+    if not csrf or csrf != request.args.get('csrf'):
+        abort(403)
+
     for player_id in db.smembers('Levels.{}:players'.format(server_id)):
         db.delete('Levels.{}:player:{}:xp'.format(server_id, player_id))
         db.delete('Levels.{}:player:{}:lvl'.format(server_id, player_id))
