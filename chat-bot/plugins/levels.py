@@ -205,13 +205,16 @@ class Levels(Plugin):
                     dest = player
                     mention = player.name
                 announcement = await storage.get('announcement')
-                await self.mee6.send_message(dest, announcement.replace(
-                    "{player}",
-                    mention,
-                ).replace(
-                    "{level}",
-                    str(new_level)
-                ))
+                try:
+                    await self.mee6.send_message(dest, announcement.replace(
+                        "{player}",
+                        mention,
+                    ).replace(
+                        "{level}",
+                        str(new_level)
+                    ))
+                except Exception as e:
+                    log.info('Cannot send message in {}'.foramt(message.server.id))
             # Updating rewards
             try:
                 await self.update_rewards(message.server)
