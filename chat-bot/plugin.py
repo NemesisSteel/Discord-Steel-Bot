@@ -46,9 +46,8 @@ class Plugin(object, metaclass=PluginMount):
         pass
 
     async def _on_message(self, message):
-        if message.author.id != self.mee6.user.id:
-            for command_name, func in self.commands.items():
-                await func(message)
+        for command_name, func in self.commands.items():
+            await func(message)
         await self.on_message(message)
 
     async def on_message(self, message):
