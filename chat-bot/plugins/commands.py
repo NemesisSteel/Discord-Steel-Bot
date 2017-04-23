@@ -1,7 +1,7 @@
 import logging
 
 from plugin import Plugin
-from utils import variables
+from utils import rich_response
 
 
 log = logging.getLogger('discord')
@@ -37,7 +37,7 @@ class Commands(Plugin):
                 message.clean_content
             ))
             response = await storage.get('command:{}'.format(message.content))
-            response = variables(response, message)
+            response = rich_response(response, message=message)
             await  self.mee6.send_message(
                 message.channel,
                 response
