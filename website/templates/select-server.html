@@ -15,7 +15,7 @@
 								<img {% if server['icon'] %}src="https://cdn.discordapp.com/icons/{{server['id']}}/{{server['icon']}}.jpg"{%endif%} {% if not server['icon'] %}avatar="{{server['name']}}" {%endif%}  style="width:100%; border:2px #FFF solid;" class="img-circle" data-toggle="tooltip" title="{{server['name']}}" data-placement="bottom" ></a>
 						</div>
 					{% else %}
-							<h3>... It looks like you don't have any server !</h3>
+							<h3>... It looks like you don't have any servers!</h3>
 							<h3>Go create one ! <br/>I'm waiting for you ;) </h3>
 					{% endfor %}
 			</div>
