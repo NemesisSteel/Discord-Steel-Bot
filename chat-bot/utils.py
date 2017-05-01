@@ -111,9 +111,9 @@ def repl(context, match):
     try:
         field_value = operator.attrgetter(field[1:-1])(context)
     except AttributeError:
-        field_value = str(field)
+        field_value = field
 
-    return field_value
+    return str(field_value)
 
 def rich_response(response, **kwargs):
     context = Context(**kwargs)
