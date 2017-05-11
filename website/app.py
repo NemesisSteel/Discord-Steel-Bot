@@ -1406,6 +1406,7 @@ def update_streamers(server_id):
 """
 
 
+SUBREDDIT_RX = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9_]{2,20}\Z")
 @app.route('/dashboard/<int:server_id>/reddit')
 @plugin_page('Reddit')
 def plugin_reddit(server_id):
@@ -1441,6 +1442,7 @@ def update_reddit(server_id):
             if s.endswith('/'):
                 s = s[:-1]
             s = s.split('/')[-1]
+            if not SUBREDDIT_RX.match(s): continue
             db.sadd('Reddit.#:subs', s)
             db.sadd('Reddit.#:sub:{}:guilds'.format(s),
                     server_id)
