@@ -1,4 +1,5 @@
 import logging
+import aioredis
 from plugin import Plugin
 
 log = logging.getLogger('discord')
@@ -21,17 +22,21 @@ class PluginManager:
             self.load(plugin)
 
     async def get_all(self, server):
-        plugin_names = await self.db.redis.smembers('plugins:{}'.format(server.id))
-        plugins = []
-        for plugin in self.mee6.plugins:
-            if plugin.is_global:
-                plugins.append(plugin)
-            if plugin.__class__.__name__ in plugin_names:
-                if hasattr(plugin, 'buff_name'):
-                    buff_ok = await self.db.redis.get('buffs:{}:{}'.format(server.id,
-                                                                           plugin.buff_name))
-                    if not buff_ok:
-                        continue
+        try:
+            plugin_names = await self.db.redis.smembers('plugins:{}'.format(server.id))
+            plugins = []
+            for plugin in self.mee6.plugins:
+                if plugin.is_global:
+                    plugins.append(plugin)
+                if plugin.__class__.__name__ in plugin_names:
+                    if hasattr(plugin, 'buff_name'):
+                        buff_ok = await self.db.redis.get('buffs:{}:{}'.format(server.id,
+                                                                               plugin.buff_name))
+                        if not buff_ok:
+                            continue
 
-                plugins.append(plugin)
-        return plugins
+                    plugins.append(plugin)
+            return plugins
+        except aioredis.errors.ConnectionClosedError as e:
+            await self.db.create()
+            return await self.get_all(server)
