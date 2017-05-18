@@ -136,7 +136,7 @@ class Mee6(discord.Client):
             if hasattr(self, 'shard_id'):
                 await self.send_message(
                     message.channel,
-                    "shard {}/{}".format(self.shard_id+1, self.shard_count)
+                    "shard {}/{}".format(self.shard_id, self.shard_count)
                 )
 
         enabled_plugins = await self.get_plugins(server)
