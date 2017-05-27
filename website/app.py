@@ -1406,14 +1406,16 @@ def update_streamers(server_id):
 """
 
 
-SUBREDDIT_RX = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9_]{2,20}\Z")
+from mee6.plugins import Reddit
+reddit = Reddit()
+
 @app.route('/dashboard/<int:server_id>/reddit')
 @plugin_page('Reddit')
 def plugin_reddit(server_id):
-    subs = db.smembers('Reddit.{}:subs'.format(server_id))
-    subs = ','.join(subs)
     guild_channels = get_guild_channels(server_id, voice=False)
-    display_channel = db.get('Reddit.{}:display_channel'.format(server_id))
+    config = reddit.get_config(server_id)
+    subs = ','.join(config['subreddits'])
+    display_channel = config['announcement_channel']
     return {
         'subs': subs,
         'display_channel': display_channel,
@@ -1421,32 +1423,15 @@ def plugin_reddit(server_id):
     }
 
 
-subr = re.compile('(((https?:\/\/)?(www\.)?[a-zA-Z]*\.[a-zA-Z]*\/)|\/?r\/)?(.*)')
 @app.route('/dashboard/<int:server_id>/update_reddit', methods=['POST'])
 @plugin_method
 def update_reddit(server_id):
-    subs = db.smembers('Reddit.{}:subs'.format(server_id))
-    for s in subs:
-        if s == '':
-            continue
-        db.srem('Reddit.#:sub:{}:guilds'.format(s),
-                server_id)
-
     display_channel = request.form.get('display_channel')
     subs = request.form.get('subs').split(',')
-    db.set('Reddit.{}:display_channel'.format(server_id), display_channel)
-    db.delete('Reddit.{}:subs'.format(server_id))
-    for sub in subs:
-        if sub != "":
-            s = subr.match(sub).groups()[-1].lower()
-            if s.endswith('/'):
-                s = s[:-1]
-            s = s.split('/')[-1]
-            if not SUBREDDIT_RX.match(s): continue
-            db.sadd('Reddit.#:subs', s)
-            db.sadd('Reddit.#:sub:{}:guilds'.format(s),
-                    server_id)
-            db.sadd('Reddit.{}:subs'.format(server_id), s)
+
+    config_patch = {'announcement_channel': display_channel,
+                    'subreddits': subs}
+    reddit.patch_config(server_id, config_patch)
 
     flash('Configuration updated with success!', 'success')
     return redirect(url_for('plugin_reddit', server_id=server_id))
