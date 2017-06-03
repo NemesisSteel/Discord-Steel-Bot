@@ -13,7 +13,7 @@
 							<label class="control-label" for="announcement_channel">Announcement Channel</label>
 							<select class="form-control input-lg" id="announcement_channel" name="announcement_channel">
 								{% for channel in guild_channels %}
-									<option value="{{channel.id}}"{%if channel.id == announcement_channel.id%} selected{%endif%}>#{{channel.name}}</option>
+									<option value="{{channel.id}}"{%if channel.id == announcement_channel%} selected{%endif%}>#{{channel.name}}</option>
 								{% endfor %}
 							</select>
 							<div class="well well-sm">
