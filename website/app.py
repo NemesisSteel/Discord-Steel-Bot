@@ -409,7 +409,8 @@ def debug_token():
 def select_server():
     guild_id = request.args.get('guild_id')
     if guild_id:
-        return redirect(url_for('dashboard', server_id=int(guild_id)))
+        return redirect(url_for('dashboard', server_id=int(guild_id),
+                                force=1))
 
     user = get_user(session['api_token'])
     if not user:
@@ -436,10 +437,11 @@ def get_invite_link(server_id):
 def server_check(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        server_id = kwargs.get('server_id')
-        server_ids = db.smembers('servers')
+        if request.args.get('force'):
+            return f(*args, **kwargs)
 
-        if str(server_id) not in server_ids:
+        server_id = kwargs.get('server_id')
+        if not db.sismember('servers', server_id):
             url = get_invite_link(server_id)
             return redirect(url)
 
