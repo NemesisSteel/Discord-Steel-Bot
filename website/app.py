@@ -812,13 +812,13 @@ def checkout_confirm():
 @plugin_page('Commands')
 def plugin_commands(server_id):
     commands = []
-    commands_names = db.smembers('commands.{}:commands'.format(server_id))
+    commands_names = db.smembers('Commands.{}:commands'.format(server_id))
     _members = get_guild_members(server_id)
     guild = get_guild(server_id)
     mention_parser = get_mention_parser(server_id, _members)
     members = typeahead_members(_members)
     for cmd in commands_names:
-        message = db.get('commands.{}:command:{}'.format(server_id, cmd))
+        message = db.get('Commands.{}:command:{}'.format(server_id, cmd))
         message = mention_parser(message)
         command = {
             'name': cmd,
@@ -833,7 +833,7 @@ def plugin_commands(server_id):
     }
 
 
-@app.route('/dashboard/<int:server_id>/commands/add', methods=['post'])
+@app.route('/dashboard/<int:server_id>/commands/add', methods=['POST'])
 @plugin_method
 def add_command(server_id):
     cmd_name = request.form.get('cmd_name', '')
@@ -841,28 +841,28 @@ def add_command(server_id):
     mention_decoder = get_mention_decoder(server_id)
     cmd_message = mention_decoder(cmd_message)
 
-    edit = cmd_name in db.smembers('commands.{}:commands'.format(server_id))
+    edit = cmd_name in db.smembers('Commands.{}:commands'.format(server_id))
 
     cb = url_for('plugin_commands', server_id=server_id)
     if len(cmd_name) == 0 or len(cmd_name) > 15:
-        flash('a command name should be between 1 and 15 character long !',
+        flash('A command name should be between 1 and 15 character long !',
               'danger')
-    elif not edit and not re.match("^[a-za-z0-9_-]*$", cmd_name):
-        flash('a command name should only contain '
+    elif not edit and not re.match("^[A-Za-z0-9_-]*$", cmd_name):
+        flash('A command name should only contain '
               'letters from a to z, numbers, _ or -', 'danger')
     elif len(cmd_message) == 0 or len(cmd_message) > 2000:
-        flash('a command message should be between '
+        flash('A command message should be between '
               '1 and 2000 character long !', 'danger')
     else:
         if not edit:
             cmd_name = '!'+cmd_name
-        db.sadd('commands.{}:commands'.format(server_id), cmd_name)
-        db.set('commands.{}:command:{}'.format(server_id, cmd_name),
+        db.sadd('Commands.{}:commands'.format(server_id), cmd_name)
+        db.set('Commands.{}:command:{}'.format(server_id, cmd_name),
                cmd_message)
         if edit:
-            flash('command {} edited !'.format(cmd_name), 'success')
+            flash('Command {} edited !'.format(cmd_name), 'success')
         else:
-            flash('command {} added !'.format(cmd_name), 'success')
+            flash('Command {} added !'.format(cmd_name), 'success')
 
     return redirect(cb)
 
@@ -870,9 +870,9 @@ def add_command(server_id):
 @app.route('/dashboard/<int:server_id>/commands/<string:command>/delete')
 @plugin_method
 def delete_command(server_id, command):
-    db.srem('commands.{}:commands'.format(server_id), command)
-    db.delete('commands.{}:command:{}'.format(server_id, command))
-    flash('command {} deleted !'.format(command), 'success')
+    db.srem('Commands.{}:commands'.format(server_id), command)
+    db.delete('Commands.{}:command:{}'.format(server_id, command))
+    flash('Command {} deleted !'.format(command), 'success')
     return redirect(url_for('plugin_commands', server_id=server_id))
 
 """
