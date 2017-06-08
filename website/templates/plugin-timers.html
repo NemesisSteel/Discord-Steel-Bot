@@ -1,0 +1,127 @@
+{% extends 'dash_base.html' %}
+{% block dash_content %}
+	<div class="container">
+		<div class="row">
+			{% include 'sidebar.html' %}
+
+			<div class="col-md-8">
+				<h3>Timers <a href="?disable=1" class="btn btn-warning btn-xs">Disable</a></h3>
+				{% include 'flash.html' %}
+				{% set csrf =  csrf_token() %}
+				<div class="well well-sm">
+					<strong>A timer is a message that is posted to a channel every x interval. Intervals are in minutes.</strong><br /><br /> <strong>Flood prevention:</strong> If a channel is not active (i.e nobody posted there after the last posted timer) mee6 will not post the message. It helps keep your channel clean when everybody's sleeping :).
+				</div>
+				<div class="panel">
+					<div class="panel-heading">
+						<div class="row" style="display: flex;">
+							<div class="col-sm-5"><strong>Message</strong></div>
+							<div class="col-sm-3"><strong>Channel</strong></div>
+							<div class="col-sm-2"><strong>Interval</strong></div>
+							<div class="col-sm-2"><strong>Actions</strong></div>
+						</div>
+					</div>
+					<div class="panel-body">
+						{% for timer in timers %}
+						<div class="row" style="margin-bottom: 20px;">
+							<form method="POST" action="{{url_for('update_timer', server_id=server['id'], timer_index=loop.index)}}" id="timer_form_{{loop.index}}">
+								<input name=_csrf_token type=hidden value="{{ csrf }}">
+								<div class="col-sm-5">
+									<textarea class="form-control message" style="height: 100px;" name="message">{{timer.message}}</textarea>
+								</div>
+								<div class="col-sm-3">
+									<select name="channel" class="form-control">
+										{% for guild_channel in guild_channels %}
+										<option value="{{guild_channel.id}}" {%if timer.channel|string() == guild_channel.id%} selected{%endif%}>#{{guild_channel.name}}</option>
+										{% endfor %}
+									</select>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+									<input type="text" name="interval" class="form-control" value="{{timer.interval}}" />
+									<span class="input-group-addon">m</span>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<a id="edit_{{loop.index}}" class="btn btn-warning btw-xs"><i class="fa fa-pencil"></i></a>
+
+									<a href="{{url_for('delete_timer', server_id=server.id, timer_index=loop.index)}}"  class="btn btn-danger btw-xs"><i class="fa fa-trash"></i></a>
+								</div>
+							</form>
+						</div>
+					<script>
+						$('#edit_{{loop.index}}').click(function(){
+							$('#timer_form_{{loop.index}}').submit();
+						})
+					</script>
+						{% endfor %}
+						<hr />
+						<div class="row">
+							<form method="POST" action="{{url_for('add_timer', server_id=server['id'])}}" id="add_timer">
+								<input name=_csrf_token type=hidden value="{{ csrf }}">
+								<div class="col-sm-5">
+									<textarea class="form-control message" style="height: 100px;" name="message"></textarea>
+								</div>
+								<div class="col-sm-3">
+									<select name="channel" class="form-control">
+										{% for guild_channel in guild_channels %}
+										<option value="{{guild_channel.id}}">#{{guild_channel.name}}</option>
+										{% endfor %}
+									</select>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+									<input type="text" name="interval" class="form-control"/>
+									<span class="input-group-addon">m</span>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<a id="add_button" class="btn btn-success btw-xs"><i class="fa fa-pencil"></i> Add</a>
+								</div>
+							</form>
+						</div>
+					<script>
+						$('#add_button').click(function(){
+							$('#add_timer').submit();
+						})
+					</script>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+		$(function() {
+			var roles = new Bloodhound({
+				datumTokenize: Bloodhound.tokenizers.obj.whitespace('name'),
+				queryTokenizer: Bloodhound.tokenizers.whitespace,
+				local: {{guild_roles|tojson|safe}}
+			});
+			roles.initialize();
+
+			var elt =  $('.roles');
+			elt.tagsinput({
+				itemValue: 'id',
+				itemText: 'name',
+				typeaheadjs: {
+					name: 'roles',
+					displayKey: 'name',
+					source: roles.ttAdapter()
+				}
+			});
+			{% for role in roles %}
+				elt.tagsinput('add', {{role|tojson|safe}});
+			{% endfor %}
+	</script>
+<script>
+$(function(){
+	$(".message").mention({
+		queryBy: ['name', 'username'],
+		users: {{guild_members|tojson|safe}}
+	});
+});
+</script>
+	<script src="{{url_for('static', filename='js/mention.js')}}"></script>
+	<script src="{{url_for('static', filename='js/bootstrap-typeahead.js')}}"></script>
+	<link href="{{url_for('static', filename='css/recommended-styles.css')}}" rel="stylesheet">
+{% endblock %}

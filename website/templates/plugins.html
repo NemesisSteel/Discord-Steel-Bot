@@ -5,15 +5,24 @@
 	'Commands',
 	icon='exclamation',
 	view='plugin_commands',
-	description='Add and manage your <strong>AWESOME</strong> custom commands !',
+	description='Add and manage your <strong>AWESOME</strong> custom commands!',
 	server=server,
 	enabled_plugins=enabled_plugins
 	)}}
 	{{ plugin.view(
+	'Timers',
+	icon='clock-o',
+	view='plugin_timers',
+	description='Send messages in a channel at specific intervals.',
+	server=server,
+	enabled_plugins=enabled_plugins
+	)}}
+
+	{{ plugin.view(
 	'Levels',
 	icon='trophy',
 	view='plugin_levels',
-	description='Let your members gain <strong>XP</strong> and <strong>levels</strong> by participating in the chat !',
+	description='Let your members gain <strong>XP</strong> and <strong>levels</strong> by participating in the chat!',
 	server=server,
 	enabled_plugins=enabled_plugins
 	)}}

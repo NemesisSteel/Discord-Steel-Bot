@@ -490,14 +490,17 @@ def plugin_page(plugin_name, buff=None):
                 not_buff = db.get('buffs:'+str(server_id)+':'+buff) is None
                 if not_buff:
                     db.srem('plugins:{}'.format(server_id), plugin_name)
+                    db.srem('plugin.{}.guilds'.format(plugin_name), server_id)
                     return redirect(url_for('shop', server_id=server_id))
 
             disable = request.args.get('disable')
             if disable:
                 db.srem('plugins:{}'.format(server_id), plugin_name)
+                db.srem('plugin.{}.guilds'.format(plugin_name), server_id)
                 return redirect(url_for('dashboard', server_id=server_id))
 
             db.sadd('plugins:{}'.format(server_id), plugin_name)
+            db.sadd('plugin.{}.guilds'.format(plugin_name), server_id)
 
             server = get_guild(server_id)
             enabled_plugins = db.smembers('plugins:{}'.format(server_id))
@@ -809,13 +812,13 @@ def checkout_confirm():
 @plugin_page('Commands')
 def plugin_commands(server_id):
     commands = []
-    commands_names = db.smembers('Commands.{}:commands'.format(server_id))
+    commands_names = db.smembers('commands.{}:commands'.format(server_id))
     _members = get_guild_members(server_id)
     guild = get_guild(server_id)
     mention_parser = get_mention_parser(server_id, _members)
     members = typeahead_members(_members)
     for cmd in commands_names:
-        message = db.get('Commands.{}:command:{}'.format(server_id, cmd))
+        message = db.get('commands.{}:command:{}'.format(server_id, cmd))
         message = mention_parser(message)
         command = {
             'name': cmd,
@@ -830,7 +833,7 @@ def plugin_commands(server_id):
     }
 
 
-@app.route('/dashboard/<int:server_id>/commands/add', methods=['POST'])
+@app.route('/dashboard/<int:server_id>/commands/add', methods=['post'])
 @plugin_method
 def add_command(server_id):
     cmd_name = request.form.get('cmd_name', '')
@@ -838,28 +841,28 @@ def add_command(server_id):
     mention_decoder = get_mention_decoder(server_id)
     cmd_message = mention_decoder(cmd_message)
 
-    edit = cmd_name in db.smembers('Commands.{}:commands'.format(server_id))
+    edit = cmd_name in db.smembers('commands.{}:commands'.format(server_id))
 
     cb = url_for('plugin_commands', server_id=server_id)
     if len(cmd_name) == 0 or len(cmd_name) > 15:
-        flash('A command name should be between 1 and 15 character long !',
+        flash('a command name should be between 1 and 15 character long !',
               'danger')
-    elif not edit and not re.match("^[A-Za-z0-9_-]*$", cmd_name):
-        flash('A command name should only contain '
+    elif not edit and not re.match("^[a-za-z0-9_-]*$", cmd_name):
+        flash('a command name should only contain '
               'letters from a to z, numbers, _ or -', 'danger')
     elif len(cmd_message) == 0 or len(cmd_message) > 2000:
-        flash('A command message should be between '
+        flash('a command message should be between '
               '1 and 2000 character long !', 'danger')
     else:
         if not edit:
             cmd_name = '!'+cmd_name
-        db.sadd('Commands.{}:commands'.format(server_id), cmd_name)
-        db.set('Commands.{}:command:{}'.format(server_id, cmd_name),
+        db.sadd('commands.{}:commands'.format(server_id), cmd_name)
+        db.set('commands.{}:command:{}'.format(server_id, cmd_name),
                cmd_message)
         if edit:
-            flash('Command {} edited !'.format(cmd_name), 'success')
+            flash('command {} edited !'.format(cmd_name), 'success')
         else:
-            flash('Command {} added !'.format(cmd_name), 'success')
+            flash('command {} added !'.format(cmd_name), 'success')
 
     return redirect(cb)
 
@@ -867,10 +870,139 @@ def add_command(server_id):
 @app.route('/dashboard/<int:server_id>/commands/<string:command>/delete')
 @plugin_method
 def delete_command(server_id, command):
-    db.srem('Commands.{}:commands'.format(server_id), command)
-    db.delete('Commands.{}:command:{}'.format(server_id, command))
-    flash('Command {} deleted !'.format(command), 'success')
+    db.srem('commands.{}:commands'.format(server_id), command)
+    db.delete('commands.{}:command:{}'.format(server_id, command))
+    flash('command {} deleted !'.format(command), 'success')
     return redirect(url_for('plugin_commands', server_id=server_id))
+
+"""
+    Timers Plugin
+"""
+
+from mee6.plugins import Timers
+timers = Timers()
+
+@app.route('/dashboard/<int:server_id>/timers')
+@plugin_page('Timers')
+def plugin_timers(server_id):
+    _members = get_guild_members(server_id)
+    guild = get_guild(server_id)
+    guild_channels = get_guild_channels(server_id, voice=False)
+    mention_parser = get_mention_parser(server_id, _members)
+    members = typeahead_members(_members)
+    config = timers.get_config(server_id)
+
+    ts = []
+    for timer in config['timers']:
+        ts.append(timer)
+        ts[-1]['message'] = mention_parser(ts[-1]['message'])
+        ts[-1]['interval'] //= 60
+
+    return {
+        'guild_roles': guild['roles'],
+        'guild_members': members,
+        'guild_channels': guild_channels,
+        'timers': ts,
+    }
+
+
+@app.route('/dashboard/<int:server_id>/timers/add', methods=['post'])
+@plugin_method
+def add_timer(server_id):
+    interval = request.form.get('interval', '')
+    message = request.form.get('message', '')
+    channel = request.form.get('channel', '')
+    mention_decoder = get_mention_decoder(server_id)
+    message = mention_decoder(message)
+    config = timers.get_config(server_id)
+
+    cb = url_for('plugin_timers', server_id=server_id)
+
+    if len(config['timers']) >= 5:
+        flash('You cannot have more than 10 timers running', 'danger')
+        return redirect(cb)
+
+    try:
+        interval = int(interval)
+    except ValueError as e:
+        flash('The interval should be an integer number', 'danger')
+        return redirect(cb)
+
+    if interval <= 0:
+        flash('The interval should be a positive number', 'danger')
+        return redirect(cb)
+
+    if len(message) > 2000:
+        flash('The message should not be longer than 2000 characters', 'danger')
+        return redirect(cb)
+
+    if len(message) == 0:
+        flash('The message should not be empty', 'danger')
+        return redirect(cb)
+
+    t = {'channel': channel, 'interval': interval * 60,
+         'message': message}
+
+    config['timers'].append(t)
+
+    timers.patch_config(server_id, config)
+
+    flash('Timer added!', 'success')
+
+    return redirect(cb)
+
+@app.route('/dashboard/<int:server_id>/timers/<int:timer_index>/update', methods=['post'])
+@plugin_method
+def update_timer(server_id, timer_index):
+    interval = request.form.get('interval', '')
+    message = request.form.get('message', '')
+    channel = request.form.get('channel', '')
+    mention_decoder = get_mention_decoder(server_id)
+    message = mention_decoder(message)
+    config = timers.get_config(server_id)
+
+    cb = url_for('plugin_timers', server_id=server_id)
+
+    try:
+        interval = int(interval)
+    except ValueError as e:
+        flash('The interval should be an integer number', 'danger')
+        return redirect(cb)
+
+    if interval <= 0:
+        flash('The interval should be a positive number', 'danger')
+        return redirect(cb)
+
+    if len(message) > 2000:
+        flash('The message should not be longer than 2000 characters', 'danger')
+        return redirect(cb)
+
+    if len(message) == 0:
+        flash('The message should not be empty', 'danger')
+        return redirect(cb)
+
+    t = {'channel': channel, 'interval': interval * 60,
+         'message': message}
+
+    config['timers'][timer_index-1] = t
+
+    timers.patch_config(server_id, config)
+
+    flash('Timer modified!', 'success')
+
+    return redirect(cb)
+
+
+@app.route('/dashboard/<int:server_id>/commands/<int:timer_index>/delete')
+@plugin_method
+def delete_timer(server_id, timer_index):
+    config = timers.get_config(server_id)
+    del config['timers'][timer_index - 1]
+    timers.patch_config(server_id, config)
+    flash('Timer deleted!', 'success')
+    return redirect(url_for('plugin_timers', server_id=server_id))
+
+
 
 """
     Help Plugin
@@ -1542,4 +1674,14 @@ def setup_logging():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run()
+    from os import path
+
+    extra_dirs = ['templates',]
+    extra_files = extra_dirs[:]
+    for extra_dir in extra_dirs:
+        for dirname, dirs, files in os.walk(extra_dir):
+            for filename in files:
+                filename = path.join(dirname, filename)
+                if path.isfile(filename):
+                    extra_files.append(filename)
+    app.run(extra_files=extra_files)
