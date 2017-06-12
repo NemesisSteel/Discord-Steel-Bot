@@ -919,7 +919,7 @@ def add_timer(server_id):
     cb = url_for('plugin_timers', server_id=server_id)
 
     if len(config['timers']) >= 5:
-        flash('You cannot have more than 10 timers running', 'danger')
+        flash('You cannot have more than 5 timers running', 'danger')
         return redirect(cb)
 
     try:
