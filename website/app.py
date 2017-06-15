@@ -43,6 +43,11 @@ db = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 mongo = pymongo.MongoClient(MONGO_URL)
 
+def strip(arg):
+    if type(arg) == list:
+        return [strip(e) for e in arg]
+    return arg.strip()
+
 """
     JINJA2 Filters
 """
@@ -1469,8 +1474,8 @@ def update_streamers(server_id):
         flash('The announcement message should not be empty!', 'warning')
         return redirect(url_for('plugin_streamers', server_id=server_id))
 
-    twitch_streamers = request.form.get('streamers').split(',')
-    hitbox_streamers = request.form.get('hitbox_streamers').split(',')
+    twitch_streamers = strip(request.form.get('streamers').split(','))
+    hitbox_streamers = strip(request.form.get('hitbox_streamers').split(','))
 
     new_config = {'announcement_channel': announcement_channel,
                   'announcement_message': announcement_msg,
@@ -1508,7 +1513,7 @@ def plugin_reddit(server_id):
 @plugin_method
 def update_reddit(server_id):
     display_channel = request.form.get('display_channel')
-    subs = request.form.get('subs').split(',')
+    subs = strip(request.form.get('subs').split(','))
 
     config_patch = {'announcement_channel': display_channel,
                     'subreddits': subs}
@@ -1552,7 +1557,10 @@ def plugin_moderator(server_id):
 @plugin_method
 def update_moderator(server_id):
     moderator_roles = request.form.get('moderator_roles').split(',')
-    banned_words = request.form.get('banned_words')
+
+    banned_words = strip(request.form.get('banned_words').split(','))
+    banned_words = ','.join(banned_words)
+
     db.delete('Moderator.{}:roles'.format(server_id))
     for role in moderator_roles:
         if role != "":
