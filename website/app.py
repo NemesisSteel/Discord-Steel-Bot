@@ -885,7 +885,7 @@ def delete_command(server_id, command):
 """
 
 from mee6.plugins import Timers
-timers = Timers()
+timers = Timers(in_bot=False)
 
 @app.route('/dashboard/<int:server_id>/timers')
 @plugin_page('Timers')
@@ -1445,7 +1445,7 @@ def plugin_git(server_id):
 
 
 from mee6.plugins import Streamers
-streamers = Streamers()
+streamers = Streamers(in_bot=False)
 
 @app.route('/dashboard/<int:server_id>/streamers')
 @plugin_page('Streamers')
@@ -1493,7 +1493,7 @@ def update_streamers(server_id):
 
 
 from mee6.plugins import Reddit
-reddit = Reddit()
+reddit = Reddit(in_bot=False)
 
 @app.route('/dashboard/<int:server_id>/reddit')
 @plugin_page('Reddit')
@@ -1692,4 +1692,5 @@ if __name__ == '__main__':
                 filename = path.join(dirname, filename)
                 if path.isfile(filename):
                     extra_files.append(filename)
+
     app.run(extra_files=extra_files)
