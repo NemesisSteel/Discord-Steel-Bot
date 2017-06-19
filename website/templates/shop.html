@@ -15,7 +15,20 @@
 								<p>
 								Enables the music plugin in your server for 30 days<br />
 								<h5><strong><i class="fa fa-gift"></i> 500</strong></h5>
-								<a href="{{url_for('buy', server_id=server.id)}}?item=music30" class="btn btn-primary">Buy</a>
+								<a href="{{url_for('buy', server_id=server.id)}}?item=music30" class="b30d btn btn-primary">
+									<p>Buy</p>
+									<script>
+									$('.b30d').click(function(e) {
+										e.preventDefault();
+										var $link = $(this);
+										bootbox.confirm("DISCLAIMER: This potion can only be used on 1 server,<br>by pressing \"OK\" the potion will bind to this server.<br>You cannot move any potions to other server.<br>Are you sure you wish to buy the potion for <b>this</b> server?",
+											function (confirmation) {
+												confirmation && document.location.assign($link.attr('href'));
+											}
+										);
+									});
+								</script>
+								</a>
 								</p>
 							</center>
 						</div>
@@ -29,7 +42,20 @@
 								Enables the music plugin in your server for liiife!<br />
 								<h5><strong><i class="fa fa-gift"></i> 3000</strong></h5>
 								{% if not is_elligible %}
-								<a href="{{url_for('buy', server_id=server.id)}}?item=musicinfinite" class="btn btn-primary">Buy</a><br />
+								<a href="{{url_for('buy', server_id=server.id)}}?item=musicinfinite" class="binf btn btn-primary">
+									<p>Buy</p>
+									<script>
+									$('.binf').click(function(e) {
+										e.preventDefault();
+										var $link = $(this);
+										bootbox.confirm("DISCLAIMER: This potion can only be used on 1 server,<br>by pressing \"OK\" the potion will bind to this server.<br>You cannot move any potions to other server.<br>Are you sure you wish to buy the potion for <b>this</b> server?",
+											function (confirmation) {
+												confirmation && document.location.assign($link.attr('href'));
+											}
+										);
+									});
+								</script>
+								</a>
 							  {% else %}
 									<a href="{{url_for('buy', server_id=server.id)}}?item=musicinfinite&eb_promo=1" class="btn btn-primary">Free!</a><br />
 									Because you are an Early Backer!
@@ -38,7 +64,7 @@
 							</center>
 						</div>
 					</div>
-					
+
 			</div>
 
 		</div>
