@@ -31,19 +31,6 @@ class Mee6(discord.Client):
     def run(self, *args):
         self.loop.run_until_complete(self.start(*args))
 
-    async def ping(self):
-        PING_INTERVAL = 3
-        key = 'mee6.gateway.{}-{}'.format(self.shard_id,
-                                          self.shard_count)
-        while True:
-            if self.is_logged_in:
-                self.stats.check(key, 'OK')
-                await self.db.redis.setex(key, PING_INTERVAL + 2, '1')
-            else:
-                self.stats.check(key, 'Critical')
-
-            await asyncio.sleep(PING_INTERVAL)
-
     async def on_ready(self):
         """Called when the bot is ready.
 
@@ -56,8 +43,6 @@ class Mee6(discord.Client):
         await self.add_all_servers()
         for plugin in self.plugins:
             self.loop.create_task(plugin.on_ready())
-
-        self.loop.create_task(self.ping())
 
     async def add_all_servers(self):
         """Syncing all the servers to the DB"""
@@ -127,6 +112,13 @@ class Mee6(discord.Client):
         self.stats.incr('mee6.recv_messages')
         if message.channel.is_private:
             return
+
+        wh_key = 'channel.{}.last_message_whid'.format(message.channel.id)
+        if message.webhook_id:
+            self.db.redis.set(wh_key, message.webhook_id)
+        else:
+            self.db.redis.delete(wh_key)
+
         if message.author.__class__ != discord.Member:
             return
 
