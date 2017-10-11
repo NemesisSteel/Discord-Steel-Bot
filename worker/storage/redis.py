@@ -7,9 +7,9 @@ class RedisStorage:
                                       guild_id)
         self.redis = redis
 
-    def set(self, key, value):
+    def set(self, key, value, ex=None):
         key = self.prefix + key
-        return self.redis.set(key, value)
+        return self.redis.set(key, value, ex)
 
     def get(self, key):
         key = self.prefix + key

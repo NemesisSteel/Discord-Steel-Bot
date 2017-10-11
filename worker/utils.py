@@ -8,7 +8,7 @@ def parse_redis_url(redis_url):
 def fmt(raw_string, **mapping):
     result = raw_string
     for k, v in mapping.items():
-        result = result.replace('{' + k + '}', v)
+        result = result.replace('{' + k + '}', str(v))
 
     return result
 

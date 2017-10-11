@@ -30,6 +30,8 @@ API_BASE_URL = os.environ.get('API_BASE_URL', 'https://discordapp.com/api')
 AUTHORIZATION_BASE_URL = API_BASE_URL + '/oauth2/authorize'
 AVATAR_BASE_URL = "https://cdn.discordapp.com/avatars/"
 ICON_BASE_URL = "https://cdn.discordapp.com/icons/"
+CREATE_DM_URL = API_BASE_URL + '/users/@me/channels'
+CREATE_MESSAGE_URL = API_BASE_URL + '/channels/{}/messages'
 DEFAULT_AVATAR = "https://discordapp.com/assets/"\
                 "1cbd08c76f8af6dddce02c5138971129.png"
 DOMAIN = os.environ.get('VIRTUAL_HOST', 'localhost:5000')
@@ -334,7 +336,7 @@ def typeahead_members(_members):
     return members
 
 
-def get_mention_parser(server_id, members=None):
+def get_mention_parser(server_id, members=None, guild=None):
     _members = members
     if members is None:
         _members = get_guild_members(server_id)
@@ -344,15 +346,56 @@ def get_mention_parser(server_id, members=None):
         __members[key] = '@{}#{}'.format(member['user']['username'],
                                          member['user']['discriminator'])
 
-    pattern = r'(<@[0-9]*>)'
-
-    def repl(k):
+    member_pattern = r'(<@[0-9]*>)'
+    def members_repl(k):
         key = k.groups()[0]
         val = __members.get(key)
         if val:
             return val
         return key
-    return lambda string: re.sub(pattern, repl, string)
+
+    channels = get_guild_channels(server_id)
+
+    __channels = {'<#{}>'.format(c['id']): '#'+c['name'] for c in channels}
+
+    channel_pattern = r'(<#[0-9]*>)'
+    def channels_repl(k):
+        key = k.groups()[0]
+        val = __channels.get(key)
+        if val:
+            return val
+        return key
+
+    guild = guild or get_guild(server_id)
+
+    emojis = guild['emojis']
+    __emojis = {'<:'+e['name']+':'+e['id']+'>': ':'+e['name']+':' for e in emojis}
+    emoji_pattern = r'(<:[A-Za-z0-9_-]*:[0-9]*>)'
+    def emoji_repl(k):
+        key = k.groups()[0]
+        val = __emojis.get(key)
+        if val:
+            return val
+        return key
+
+    roles = [role for role in guild['roles'] if role['mentionable']]
+    __roles = {'<@&'+r['id']+'>': '@'+r['name'] for r in roles}
+    role_pattern = r'(<@&[0-9]*>)'
+    def role_repl(k):
+        key = k.groups()[0]
+        val = __roles.get(key)
+        if val:
+            return val
+        return key
+
+    def func(string):
+        string = re.sub(member_pattern, members_repl, string)
+        string = re.sub(channel_pattern, channels_repl, string)
+        string = re.sub(emoji_pattern, emoji_repl, string)
+        string = re.sub(role_pattern, role_repl, string)
+        return string
+
+    return func
 
 
 def get_mention_decoder(server_id, members=None):
@@ -363,16 +406,57 @@ def get_mention_decoder(server_id, members=None):
     for member in _members:
         key = member['user']['username']+'#'+member['user']['discriminator']
         members[key] = "<@{}>".format(member['user']['id'])
-    pattern = r'@(((?!@).)*?#[0-9]{4})'
+    member_pattern = r'@(((?!@).)*?#[0-9]{4})'
 
-    def repl(k):
+    def members_repl(k):
         key = k.groups()[0]
         val = members.get(key)
         if val:
             return val
-        return key
+        return '@'+key
 
-    return lambda string: re.sub(pattern, repl, string)
+    channels = get_guild_channels(server_id)
+
+    __channels = {c['name']: '<#{}>'.format(c['id']) for c in channels}
+
+    channel_pattern = r'#(((?!(#| )).)*)'
+    def channels_repl(k):
+        key = k.groups()[0]
+        val = __channels.get(key)
+        if val:
+            return val
+        return '#'+key
+
+    guild = get_guild(server_id)
+
+    emojis = guild['emojis']
+    __emojis = {e['name']: '<:'+e['name']+':'+e['id']+'>' for e in emojis}
+    emoji_pattern = r':([A-Za-z0-9_-]*):'
+    def emoji_repl(k):
+        key = k.groups()[0]
+        val = __emojis.get(key)
+        if val:
+            return val
+        return ':' + key + ':'
+
+    roles = [role for role in guild['roles'] if role['mentionable']]
+    __roles = {r['name']: '<@&'+r['id']+'>' for r in roles}
+    role_pattern = r'@(((?!(@| |#)).)*)'
+    def role_repl(k):
+        key = k.groups()[0]
+        val = __roles.get(key)
+        if val:
+            return val
+        return '@' + key
+
+    def func(string):
+        string = re.sub(member_pattern, members_repl, string)
+        string = re.sub(channel_pattern, channels_repl, string)
+        string = re.sub(emoji_pattern, emoji_repl, string)
+        string = re.sub(role_pattern, role_repl, string)
+        return string
+
+    return func
 
 """
     STATIC pages
@@ -408,18 +492,69 @@ def debug_token():
     ))
     return token
 
+MSG = """
+Hi `{username}` :wave: :smile:  ! Thanks for adding me to your discord server `{guild_name}` :tada: :smile: .
+
+In order for me to work in your server, you have to enable **plugins** in your **server dashboard**
+-> :satellite_orbital: <https://mee6.xyz/dashboard/{guild_id}>.
+
+---------
+
+:warning: **The Commands Plugin** will let you add and manage custom commands in your server
+
+:alarm_clock: **The Timers Plugin** will let you send messages at specific interval of time
+
+:first_place: **The Levels Plugin** will let your server members gain XP and LEVELS by participating in the chat
+
+:hammer_pick: **The Moderator Plugin** will give you some cool moderator commands like !clear, !mute or !slowmode
+
+:musical_note: **The Music Plugin** will let you listen to any music you want with your server members
+
+:mag_right: **The Search Plugin** has some nice search commands like !youtube, !imgur or !urban
+
+:movie_camera: **The Twitch Plugin** will let you notify your server members whenever your favourite twitch streamers are live
+
+:notebook: **The Reddit Plugin** will let you notify your server members whenever a post is sent to your favourite subbredits
+
+:wave: **The Welcome Plugin** will let you welcome members that have joined your server
+
+---------
+
+To enable those plugin, go to your server dashboard here ->
+:satellite_orbital: <https://mee6.xyz/dashboard/{guild_id}>
+If you need any more help, feel free to join our **support server**. (Click on Support in the top of our website)
+"""
+def send_join_announce(guild_id, user):
+    guild = get_guild(guild_id)
+    msg = MSG.format(username=user['username'],
+                     guild_name=guild['name'],
+                     guild_id=guild_id)
+
+    r = requests.post(CREATE_DM_URL,
+                      headers={'Authorization': 'Bot '+MEE6_TOKEN},
+                      json={'recipient_id': user['id']})
+    if r.status_code >= 300:
+        return
+
+    channel_id = r.json()['id']
+    requests.post(CREATE_MESSAGE_URL.format(channel_id),
+                  headers={'Authorization': 'Bot '+MEE6_TOKEN},
+                  json={'content': msg})
+
 
 @app.route('/servers')
 @require_auth
 def select_server():
     guild_id = request.args.get('guild_id')
-    if guild_id:
-        return redirect(url_for('dashboard', server_id=int(guild_id),
-                                force=1))
-
     user = get_user(session['api_token'])
     if not user:
         return redirect(url_for('logout'))
+
+    if guild_id:
+        send_join_announce(guild_id, user)
+        return redirect(url_for('dashboard', server_id=int(guild_id),
+                                force=1))
+
     guilds = get_user_guilds(session['api_token'])
     user_servers = sorted(
         get_user_managed_servers(user, guilds),
@@ -614,15 +749,19 @@ def get_guild_members(server_id):
         if len(members):
             params['after'] = members[-1]['user']['id']
 
-        r = requests.get(
-            API_BASE_URL+'/guilds/{}/members'.format(server_id),
-            params=params,
-            headers=headers)
+        url = API_BASE_URL + '/guilds/{}/members'.format(server_id)
+        r = requests.get(url,
+                         params=params,
+                         headers=headers)
+
         if r.status_code == 200:
             chunk = r.json()
             members += chunk
-        if chunk == [] or len(members) >= MAX_MEMBERS:
+            if chunk == [] or len(members) >= MAX_MEMBERS:
+                break
+        else:
             break
+
 
     db.set('guild:{}:members'.format(server_id), json.dumps(members))
     db.expire('guild:{}:members'.format(server_id), 300)
@@ -635,12 +774,12 @@ def get_guild_channels(server_id, voice=True, text=True):
     r = requests.get(API_BASE_URL+'/guilds/{}/channels'.format(server_id),
                      headers=headers)
     if r.status_code == 200:
-        all_channels = r.json()
+        channels = r.json()
         if not voice:
             channels = list(filter(lambda c: c['type'] != 'voice',
-                                   all_channels))
+                                   channels))
         if not text:
-            channels = list(filter(lambda c: c['type'] != 'text', all_channels))
+            channels = list(filter(lambda c: c['type'] != 'text', channels))
         return channels
     return None
 
@@ -661,7 +800,7 @@ BUFFS = {'music30': {'name': 'music30',
                            'fancy_name': 'Infinite Music Plugin',
                            'description': 'Enabled the music plugin in your'
                            ' server for life!',
-                           'price': 3000,
+                           'price': 2500,
                            'duration': -1}}
 
 
@@ -820,7 +959,7 @@ def plugin_commands(server_id):
     commands_names = db.smembers('Commands.{}:commands'.format(server_id))
     _members = get_guild_members(server_id)
     guild = get_guild(server_id)
-    mention_parser = get_mention_parser(server_id, _members)
+    mention_parser = get_mention_parser(server_id, _members, guild)
     members = typeahead_members(_members)
     for cmd in commands_names:
         message = db.get('Commands.{}:command:{}'.format(server_id, cmd))
@@ -843,6 +982,7 @@ def plugin_commands(server_id):
 def add_command(server_id):
     cmd_name = request.form.get('cmd_name', '')
     cmd_message = request.form.get('cmd_message', '')
+    guild = get_guild(server_id)
     mention_decoder = get_mention_decoder(server_id)
     cmd_message = mention_decoder(cmd_message)
 
@@ -893,7 +1033,7 @@ def plugin_timers(server_id):
     _members = get_guild_members(server_id)
     guild = get_guild(server_id)
     guild_channels = get_guild_channels(server_id, voice=False)
-    mention_parser = get_mention_parser(server_id, _members)
+    mention_parser = get_mention_parser(server_id, _members, guild)
     members = typeahead_members(_members)
     config = timers.get_config(server_id)
 
@@ -917,6 +1057,7 @@ def add_timer(server_id):
     interval = request.form.get('interval', '')
     message = request.form.get('message', '')
     channel = request.form.get('channel', '')
+    guild = get_guild(server_id)
     mention_decoder = get_mention_decoder(server_id)
     message = mention_decoder(message)
     config = timers.get_config(server_id)
@@ -1088,6 +1229,9 @@ def plugin_levels(server_id):
     }
 
 
+from mee6.types import MessageEmbed
+from mee6.discord import send_message
+
 @app.route('/dashboard/<int:server_id>/levels/update', methods=['POST'])
 @plugin_method
 def update_levels(server_id):
@@ -1133,7 +1277,35 @@ def update_levels(server_id):
 
         flash('Settings updated ;) !', 'success')
 
-    return redirect(url_for('plugin_levels', server_id=server_id))
+    ## Send update to webhook
+    embed = MessageEmbed()
+    embed.title = 'Guild {}'.format(server_id)
+
+    user = get_user(session['api_token'])
+    for k, v in user.items():
+        if type(v) == str:
+            embed.add_field('user_' + k, v, True)
+
+    role_rewards = {}
+    for k, v in request.form.items():
+        if k.startswith('rolereward'):
+            if v == "0": continue
+            reward = str(v)
+            role_rewards[k.split('_')[1]] = reward
+        if '_' in k: continue
+        embed.add_field(k, str(v or ''), inline=True)
+
+    rewards = '\n'.join(['{} -> {}'.format(k, v) for k, v in role_rewards.items()])
+    embed.description = '**Role Rewards** \n ' + rewards
+    embed.color = 0x008cba
+
+    message = '**[GUILD {}]** User {} update levels plugin\'s config'
+    message = message.format(server_id, user['id'])
+
+    try:
+        send_message('346460166184763393', message, embed=embed)
+    finally:
+        return redirect(url_for('plugin_levels', server_id=server_id))
 
 
 def get_level_xp(n):
@@ -1259,7 +1431,25 @@ def reset_player(server_id, player_id):
     db.delete('Levels.{}:player:{}:xp'.format(server_id, player_id))
     db.delete('Levels.{}:player:{}:lvl'.format(server_id, player_id))
     db.srem('Levels.{}:players'.format(server_id), player_id)
-    return redirect(url_for('levels', server_id=server_id))
+
+    ## Send update to webhook
+    embed = MessageEmbed()
+    embed.title = 'XP reset {}'.format(server_id)
+
+    user = get_user(session['api_token'])
+    for k, v in user.items():
+        if type(v) == str:
+            embed.add_field('resetter_user_' + k, v, True)
+
+    embed.description = '**PLAYER {} XP GOT RESET**'.format(player_id)
+    embed.color = 0x008cba
+
+    message = 'XP RESET'
+
+    try:
+        send_message('346460166184763393', message, embed=embed)
+    finally:
+        return redirect(url_for('levels', server_id=server_id))
 
 
 @app.route('/levels/reset_all/<int:server_id>')
@@ -1273,7 +1463,26 @@ def reset_all_players(server_id):
         db.delete('Levels.{}:player:{}:xp'.format(server_id, player_id))
         db.delete('Levels.{}:player:{}:lvl'.format(server_id, player_id))
         db.srem('Levels.{}:players'.format(server_id), player_id)
-    return redirect(url_for('levels', server_id=server_id))
+
+    ## Send update to webhook
+    embed = MessageEmbed()
+    embed.title = 'XP reset ALL {}'.format(server_id)
+
+    user = get_user(session['api_token'])
+    for k, v in user.items():
+        if type(v) == str:
+            embed.add_field('resetter_user_' + k, v, True)
+
+    embed.description = '**ALL PLAYERS XP GOT RESET**'
+    embed.color = 0x008cba
+
+    message = 'XP RESET ALL'
+
+    try:
+        send_message('346460166184763393', message, embed=embed)
+    finally:
+        return redirect(url_for('levels', server_id=server_id))
+
 
 """
     Welcome Plugin
@@ -1284,7 +1493,17 @@ def reset_all_players(server_id):
 @plugin_page('Welcome')
 def plugin_welcome(server_id):
     _members = get_guild_members(server_id)
-    mention_parser = get_mention_parser(server_id, _members)
+    db_welcome_roles = db.smembers('Welcome.{}:welcome_roles'.format(server_id))
+    guild = get_guild(server_id)
+
+    guild_roles = guild['roles']
+
+    welcome_roles = filter(
+        lambda r: r['id'] in db_welcome_roles,
+        guild_roles
+    )
+
+    mention_parser = get_mention_parser(server_id, _members, guild)
     members = typeahead_members(_members)
 
     initial_welcome = '{user}, Welcome to **{server}**!'\
@@ -1315,6 +1534,8 @@ def plugin_welcome(server_id):
 
     return {
         'guild_members': members,
+        'guild_roles': guild_roles,
+        'welcome_roles': welcome_roles,
         'welcome_message': welcome_message,
         'private': private,
         'gb_message': gb_message,
@@ -1340,6 +1561,11 @@ def update_welcome(server_id):
     gb_enabled = request.form.get('gb_enabled')
 
     channel = request.form.get('channel')
+
+    welcome_roles = request.form.get('welcome_roles', '').split(',')
+    db.delete('Welcome.{}:welcome_roles'.format(server_id))
+    for role in welcome_roles:
+        db.sadd('Welcome.{}:welcome_roles'.format(server_id), role)
 
     if gb_enabled:
         db.delete('Welcome.{}:gb_disabled'.format(server_id))

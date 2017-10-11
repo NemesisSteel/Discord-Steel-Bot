@@ -40,6 +40,40 @@
 								This is the channel where the welcome and bye messages will be posted.<br />
 								<strong>Warning: </strong>Mee6 should have the permission to post there.
 							</div>
+              <!--
+							<label class="control-label" for="channel_name">Welcome Roles</label>
+							<input type="text" data-role="tagsinput" name="welcome_roles" class="roles"/><br />
+							<div class="well well-sm">
+                You can add roles you want Mee6 to give to any new member.<br
+            /> 
+                Be careful about the roles you want to give. <b>Anyone</b> joining your server will be given that role.
+							</div>
+							<script>
+$(function() {
+	var roles = new Bloodhound({
+		datumTokenizer: Bloodhound.tokenizers.obj.whitespace('name'),
+		queryTokenizer: Bloodhound.tokenizers.whitespace,
+		local: {{guild_roles|tojson|safe}}
+	});
+	roles.initialize();
+
+	var elt = $('.roles');
+	elt.tagsinput({
+		itemValue: 'id',
+		itemText: 'name',
+		typeaheadjs: {
+			//name: 'roles',
+			//displayKey: 'name',
+			source: {{guild_roles|tojson|safe}}
+		}
+	});
+
+	{% for role in welcome_roles %}
+		elt.tagsinput('add', {{role|tojson|safe}});
+	{% endfor %}
+});
+              </script> -->
+
 							<button type="submit" class="btn btn-primary">Update</button>
 						</div>
 					</form>
@@ -61,6 +95,8 @@ $(function(){
 	});
 });
 </script>
+
+
 	<script src="{{url_for('static', filename='js/mention.js')}}"></script>
 	<script src="{{url_for('static', filename='js/bootstrap-typeahead.js')}}"></script>
 	<link href="{{url_for('static', filename='css/recommended-styles.css')}}" rel="stylesheet">

@@ -4,7 +4,7 @@ import inspect
 from collections import defaultdict
 from logger import Logger
 from constants import EVENTS
-from cmd import Command
+from cmd import CommandHandler
 
 
 class Base(Logger):
@@ -13,7 +13,7 @@ class Base(Logger):
         self.bot = bot
         self.listeners = defaultdict(list)
         self.register_default_listeners()
-        self.command = Command(self)
+        self.command_handler = CommandHandler(self)
         self.name = self.__class__.__name__
 
         self.send_message = bot.send_message

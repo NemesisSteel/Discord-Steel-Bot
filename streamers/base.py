@@ -155,10 +155,7 @@ class Base:
                                                   embed=embed)
         except APIException as e:
             # Unknows Channel
-            if e.code == 10003 and retry < 1:
-                self.send_announce(guild, guild, message, embed, retry=retry+1)
-            else:
-                raise e
+            raise e
 
     def process(self):
         streamers = self.db.smembers('Streamers.*:{}'.format(self.platform_db_name))

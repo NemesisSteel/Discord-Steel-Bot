@@ -3,10 +3,9 @@ import config
 import html
 import re
 
-from plugin import Plugin
-from cmd import register, hint, optional, Response
-from exceptions import BotException, NotFound
-from utils import Embed
+from plugins.base import Base
+from cmd.decorators import register, hint, optional
+from cmd.response import Response
 from requests.auth import HTTPBasicAuth
 from xml.etree import ElementTree
 from bs4 import BeautifulSoup
@@ -20,8 +19,8 @@ def html_parse(string):
 
     return html.unescape(string)
 
-class Search(Plugin):
-    @register('!imgur <search:str>')
+class Search(Base):
+    @register('!imgur [search:str]')
     @hint('!imgur [your search]')
     @optional
     def imgur(self, ctx, search):
@@ -30,19 +29,19 @@ class Search(Plugin):
         params = {'q': search}
         r = requests.get(url, headers=headers, params=params)
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.json()
         data = body.get('data')
         if not data:
-            raise NotFound()
+            return Response(code=404)
 
         result = data[0]
         message = result['link']
 
         return Response(message)
 
-    @register('!youtube <search:str>')
+    @register('!youtube [search:str]')
     @hint('!youtube [your search]')
     @optional
     def youtube(self, ctx, search):
@@ -53,19 +52,19 @@ class Search(Plugin):
                   'key': config.GOOGLE_API_KEY}
         r = requests.get(url, params=params)
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.json()
         data = body.get('items')
         if not data:
-            raise NotFound()
+            return Response(code=404)
 
         video = data[0]
         message = 'https://youtu.be/' + video['id']['videoId']
 
         return Response(message)
 
-    @register('!urban <search:str>')
+    @register('!urban [search:str]')
     @hint('!urban [your search]')
     @optional
     def urban(self, ctx, search):
@@ -73,12 +72,12 @@ class Search(Plugin):
         params = {'term': search}
         r = requests.get(url, params=params)
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.json()
         data = body.get('list')
         if not data:
-            raise NotFound()
+            return Response(code=404)
 
         entry = data[0]
 
@@ -94,11 +93,10 @@ class Search(Plugin):
                       'value': entry['example'],
                       'inline': True},
                  ]}
-        embed = Embed(embed)
 
         return Response(embed=embed)
 
-    @register('!twitch <search:str>')
+    @register('!twitch [search:str]')
     @hint('!twitch [streamer name]')
     @optional
     def twitch(self, ctx, search):
@@ -108,32 +106,32 @@ class Search(Plugin):
         r = requests.get(url, params=params)
 
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.json()
         channels = body.get('channels')
         if not channels:
-            raise NotFound()
+            return Response(code=404)
 
         channel = channels[0]
 
-        embed = Embed({'color': 0x6441a5,
-                       'title': channel['name'],
-                       'description': channel['status'],
-                       'url': channel['url'],
-                       'thumbnail': {'url': channel['logo'],
-                                     'width': 100,
-                                     'height': 100},
-                       'fields': [
-                           {'name': 'followers',
-                            'value': channel['followers'],
-                            'inline': True},
-                           {'name': 'views',
-                            'value': channel['views'],
-                            'inline': True},
-                           {'name': 'last played game',
-                            'value': channel['game']}
-                       ]})
+        embed = {'color': 0x6441a5,
+                 'title': channel['name'],
+                 'description': channel['status'],
+                 'url': channel['url'],
+                 'thumbnail': {'url': channel['logo'],
+                               'width': 100,
+                               'height': 100},
+                 'fields': [
+                     {'name': 'followers',
+                      'value': channel['followers'],
+                      'inline': True},
+                     {'name': 'views',
+                      'value': channel['views'],
+                      'inline': True},
+                     {'name': 'last played game',
+                      'value': channel['game']}
+                 ]}
 
         return Response(embed=embed)
 
@@ -144,10 +142,10 @@ class Search(Plugin):
         r = requests.get(url, params=params, auth=auth)
 
         if r.status_code == 204:
-            raise NotFound()
+            return Response(code=404)
 
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.text
         root = ElementTree.fromstring(body)
@@ -181,7 +179,7 @@ class Search(Plugin):
 
         return Response(embed=embed)
 
-    @register('!anime <search:str>')
+    @register('!anime [search:str]')
     @hint('!anime [anime name]')
     @optional
     def manga(self, ctx, search):
@@ -191,10 +189,10 @@ class Search(Plugin):
         r = requests.get(url, params=params, auth=auth)
 
         if r.status_code == 204:
-            raise NotFound()
+            return Response(code=400)
 
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         body = r.text
         root = ElementTree.fromstring(body)
@@ -228,19 +226,19 @@ class Search(Plugin):
 
         return Response(embed=embed)
 
-    @register('!manga <search:str>')
+    @register('!manga [search:str]')
     @hint('!manga [manga name]')
     @optional
     def manga(self, ctx, search):
         return self.mal_resource('manga', search)
 
-    @register('!anime <search:str>')
+    @register('!anime [search:str]')
     @hint('!anime [anime name]')
     @optional
     def anime(self, ctx, search):
         return self.mal_resource('anime', search)
 
-    @register('!pokemon <search:str>')
+    @register('!pokemon [search:str]')
     @hint('!pokemon [pokemon name]')
     @optional
     def pokemon(self, ctx, search):
@@ -249,11 +247,11 @@ class Search(Plugin):
         r = requests.get(url, params=params)
 
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         data = r.text
         if 'Nothing found' in data:
-            raise NotFound()
+            return Response(code=404)
 
         soup = BeautifulSoup(data, "html.parser")
         tds = soup.find_all("td", class_="name")[0].parent.find_all("td")
@@ -277,7 +275,7 @@ class Search(Plugin):
 
         r = requests.get(poke_url)
         if r.status_code != 200:
-            raise BotException()
+            return Response(code=500)
 
         data = r.text
         soup2 = BeautifulSoup(data, "html.parser")

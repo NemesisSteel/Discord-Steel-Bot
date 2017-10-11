@@ -1,9 +1,9 @@
-from plugin import Plugin
+from plugins.base import Base
 from utils import fmt
 
 import gevent
 
-class Welcome(Plugin):
+class Welcome(Base):
     def on_member_join(self, guild, member):
         welcome_message = fmt(guild.storage.get('welcome_message'),
                               server=guild.name,

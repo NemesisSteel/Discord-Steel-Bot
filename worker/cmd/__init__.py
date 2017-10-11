@@ -10,62 +10,8 @@ from cmd.response import Response
 from time import time
 from math import ceil
 
-def _get_command_name(command):
-    pattern = r'^!([a-zA-Z0-9_\-]*)'
-    match = re.match(pattern, command)
 
-    return match and match.group(1)
-
-def _get_command_regex(command):
-    pattern = '<(\w*):(\w*)>'
-    args = re.findall(pattern, command)
-
-    command_name = _get_command_name(command)
-
-    regex = '^!{}'.format(command_name)
-
-    arg_regex = {'member': '<@!?(?P<ARG_NAME>[0-9]*)>',
-                 'channel': '<#(?P<ARG_NAME>[0-9]*)>',
-                 'role': '<@&(?P<ARG_NAME>[0-9]*)>',
-                 'str': '(?P<ARG_NAME>.*)',
-                 'int': '(?P<ARG_NAME>[0-9]*)'}
-    for arg_name, arg_type in args:
-        arg_type_regex = arg_regex.get(arg_type).replace('ARG_NAME',
-                                                         arg_name)
-        regex += '[ ]*' + arg_type_regex
-
-    return regex
-
-def hint(hint_str):
-    def decorator(f):
-        f.hint_str = f
-        return f
-    return decorator
-
-def require_roles(*roles):
-    def decorator(f):
-        f.roles = roles
-        return f
-    return decorator
-
-def optional(f):
-    f.optional = True
-    return f
-
-def register(command):
-    def decorator(f):
-        regex = _get_command_regex(command)
-        command_name = _get_command_name(command)
-
-        f.is_command = True
-        f.regex = re.compile(regex)
-        f.command_name = command_name
-        return f
-    return decorator
-
-
-class Command(Logger):
-
+class CommandHandler(Logger):
     def __init__(self, plugin):
         self.plugin = plugin
         self.bot = plugin.bot
@@ -79,10 +25,12 @@ class Command(Logger):
 
     def get_commands(self):
         plugin = self.plugin
-        methods = inspect.getmembers(plugin, inspect.ismethod)
-        is_command = lambda m: hasattr(m[1], 'is_command')
-        commands = list(filter(is_command, methods))
-        commands = list(map(lambda m: m[1], commands))
+        methods = map(lambda m: m[1], inspect.getmembers(plugin,
+                                                         inspect.ismethod))
+
+        is_command = lambda m: hasattr(m, 'is_command')
+        commands = [method for method in methods if is_command(method)]
+
         return commands
 
     def load_commands(self):
@@ -90,33 +38,35 @@ class Command(Logger):
 
     def on_message_create(self, guild, message):
         for command in self.commands:
-            gevent.spawn(self.command_handler, command, guild, message)
+            gevent.spawn(self.handle_command, command, guild, message)
 
-    def command_handler(self, command_func, guild, message):
-        regex = command_func.regex
-        match = regex.match(message.content)
-        if not match:
+    def handle_command(self, command, guild, message):
+        # check if command in called
+        if not message.content.startswith('!' + command.name):
             return
 
-        import traceback
-        import sys
-
-        args = match.groupdict()
-
+        # build the context of the command call
         ctx = Context(message=message,
                       guild=guild)
 
-        if hasattr(command_func, 'optional'):
-            check =  ctx.guild.storage.get(command_func.command_name)
+        # if command is optional, check if it's activated
+        if hasattr(command, 'optional'):
+            check =  ctx.guild.storage.get(command.name)
             if not check:
                 return
 
-        interaction = Interaction(command_func, ctx)
+        # initialize an interaction for stats purpose
+        interaction = Interaction(command, ctx)
 
-        try:
-            response = command_func(ctx, **args)
-        except BotException as e:
-            response = Response(e.message)
+        regex = command.regex
+        match = regex.match(message.content)
+        if not match:
+            # if doesn't match, the command is malformed
+            response = Response(code=400)
+        else:
+            # actually call the command and get the response
+            args = match.groupdict()
+            response = command(ctx, **args)
 
         if response:
             interaction.response = response

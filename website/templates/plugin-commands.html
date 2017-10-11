@@ -41,7 +41,7 @@ $('#add').click(function(){
 										<form action="{{url_for('add_command', server_id=server.id)}}?edit=1"  method='post' id="{{cmd['name'][1:]}}">
 											<input name=_csrf_token type=hidden value="{{ csrf }}">
 											<input name="cmd_name" type="hidden" value="{{cmd['name']}}">
-											<textarea class="form-control cmd_message" name="cmd_message" rows="3" style="resize:vertical;">{{cmd['message']}}</textarea>
+											<textarea style="height: 150px; resize: vertical;" class="form-control cmd_message" name="cmd_message" rows="3">{{cmd['message']}}</textarea>
 										</form>
 									</td>
 									<td><a href="#" id="edit_{{cmd['name'][1:]}}" class="btn btn-warning btn-xs"><i class="fa fa-pencil"></i> Edit</a>

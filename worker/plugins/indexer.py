@@ -1,4 +1,4 @@
-from plugin import Plugin
+from plugins.base import Base
 from elasticsearch import Elasticsearch
 
 import os
@@ -47,7 +47,7 @@ def dump_guild(guild):
 
 ES_URL = os.getenv('ES_URL')
 
-class Indexer(Plugin):
+class Indexer(Base):
 
     __global__ = True
     es = Elasticsearch([ES_URL])

@@ -8,7 +8,6 @@ import config
 
 from time import time
 from discord.types import Message, Guild, Member, TextChannel, Embed
-from disco.api.http import APIException
 from plugins.printer import Printer
 from storage.redis import RedisStorage
 from disco.client import Client, ClientConfig
@@ -131,12 +130,11 @@ class WorkerBot(object):
         return loop
 
     def send_message(self, destination, message="", embed=None):
-        """ Sends a message to a destination. Accepts member,
-            text channel, guild, or snowflake destination.
-        """
-        ACCEPTED_DESTINATIONS = [int, TextChannel, Member, Guild]
-        if destination.__class__ not in ACCEPTED_DESTINATIONS:
-            return
+        ACCEPTED_DESTINATIONS = (int, TextChannel, Member, Guild)
+        destination_type = destination.__class__
+        if destination_type not in ACCEPTED_DESTINATIONS:
+            raise Exception("Bad destination, received"
+                            "{}".format(destination_type))
 
         if hasattr(destination, 'id'):
             destination = destination.id
@@ -144,17 +142,9 @@ class WorkerBot(object):
         if embed and embed.__class__ == dict:
             embed = Embed(embed)
 
-        try:
-            r = self.api.channels_messages_create(destination, message,
-                                                  embed=embed)
-        except APIException as e:
-            # catch embed disabled
-            if e.code in (50004, 50013) and embed:
-                r = self.api.channels_messages_create(destination,
-                                                      embed.fail_safe_message)
-            else:
-                raise e
-
+        r = self.api.channels_messages_create(destination, message,
+                                              embed=embed)
+        return r
 
     def run(self):
         for _ in range(1, LISTENERS_COUNT + 1):
