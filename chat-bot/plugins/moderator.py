@@ -49,9 +49,16 @@ class Moderator(Plugin):
 
         message_number = max(len(deleted_messages) - 1, 0)
 
+        delete = True
+
         if message_number == 0:
-            resp = "Deleted `0 message` 🙄  \n (I can't delete messages "\
-                      "older than 2 weeks due to discord limitations)"
+            resp = "Deleted `0 message` 🙄. I can't delete messages "\
+                   "older than 2 weeks due to discord limitations."\
+                   "\n\n ℹ️ "\
+                   " If you want to delete all the messages here, just"\
+                   " right click on your channel -> clone channel, then"\
+                   " delete the old channel 👍 ."
+            delete = False
         else:
             resp = "Deleted `{} message{}` 👌 ".format(message_number,
                                                          "" if message_number <\
@@ -61,9 +68,10 @@ class Moderator(Plugin):
             message.channel,
             resp
         )
-        await asyncio.sleep(8)
 
-        await self.mee6.delete_message(confirm_message)
+        if delete:
+            await asyncio.sleep(8)
+            await self.mee6.delete_message(confirm_message)
 
     @command(pattern='^!clear <@!?([0-9]*)>$', db_check=True, db_name='clear',
              require_one_of_roles="roles")

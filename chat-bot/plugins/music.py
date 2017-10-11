@@ -220,6 +220,8 @@ class Music(Plugin):
 
         if 'http' in search:
             video_url = search
+            # remove unecessary params
+            video_url = video_url.split('&')[0]
         else:
             try:
                 video_url = await self.get_yt_video_url(search)

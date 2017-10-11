@@ -2,9 +2,12 @@ import discord
 import logging
 import os
 import asyncio
+import aiohttp
+import json
 from plugin_manager import PluginManager
 from database import Db
 from datadog import DDAgent
+from backdoor import make_console
 
 log = logging.getLogger('discord')
 
@@ -29,7 +32,48 @@ class Mee6(discord.Client):
         self.stats = DDAgent(self.dd_agent_url)
 
     def run(self, *args):
+        console_coro = self.loop.create_server(make_console(self),
+                                               '127.0.0.1', 8000)
+        self.loop.run_until_complete(console_coro)
         self.loop.run_until_complete(self.start(*args))
+
+    async def console(reader, writer):
+        loop = asyncio.get_event_loop()
+        data = await reader.read(100)
+        message = data.decode()
+        result = eval(message)
+        writer.write(result)
+        await writer.drain()
+        writer.close()
+
+    def send_monitoring_message(self, msg):
+        self.loop.create_task(self._send_monitoring_message(msg))
+
+    async def _send_monitoring_message(self, msg):
+        url = os.getenv('MONITORING_WH')
+        headers = {}
+        headers['Content-Type'] = 'application/json'
+        data = json.dumps({'content': msg})
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, data=data) as d:
+                pass
+
+    async def on_socket_raw_receive(self, payload):
+        tags = {'op': str(payload['op']),
+                't': payload.get('t') or "NONE"}
+        self.stats.incr('discord.event', tags=tags)
+
+        if payload['op'] == 0:
+            if payload['t'] == 'READY':
+                if hasattr(self, 'shard_id'):
+                    msg = "**[READY]** shard {}/{}".format(self.shard_id,
+                                                           self.shard_count)
+                    self.send_monitoring_message(msg)
+            if payload['t'] == 'RESUMED':
+                if hasattr(self, 'shard_id'):
+                    msg = "**[RESUMED]** shard {}/{}".format(self.shard_id,
+                                                             self.shard_count)
+                    self.send_monitoring_message(msg)
 
     async def on_ready(self):
         """Called when the bot is ready.

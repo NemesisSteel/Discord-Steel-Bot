@@ -29,15 +29,28 @@ class Commands(Plugin):
             return
         storage = await self.get_storage(message.server)
         commands = await storage.smembers('commands')
-        if message.content in commands:
+        for command in commands:
+            if not message.content.startswith(command):
+                continue
+
+            splitted = message.content.split()
+            if splitted[0] != command:
+                continue
+
+            args = splitted[1:]
+
             log.info('{}#{}@{} >> {}'.format(
                 message.author.name,
                 message.author.discriminator,
                 message.server.name,
                 message.clean_content
             ))
-            response = await storage.get('command:{}'.format(message.content))
-            response = rich_response(response, message=message)
+            response = await storage.get('command:{}'.format(command))
+            response = rich_response(response, args=args, message=message)
+
+            tags = {'cmd': 'custom'}
+            self.mee6.stats.incr('mee6.command', tags=tags)
+
             await  self.mee6.send_message(
                 message.channel,
                 response

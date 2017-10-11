@@ -1,6 +1,9 @@
 import inspect
 import logging
 
+from discord.errors import Forbidden
+
+
 logs = logging.getLogger('discord')
 
 
@@ -47,7 +50,15 @@ class Plugin(object, metaclass=PluginMount):
 
     async def _on_message(self, message):
         for command_name, func in self.commands.items():
-            await func(message)
+            try:
+                if await func(message) != False:
+                    tags = {'cmd': command_name}
+                    self.mee6.stats.incr('mee6.command', tags=tags)
+            except Forbidden as e:
+                msg = "⚠️ Oops, it looks like I don't have the permission to " \
+                      "do that 😐 ⚠️ "
+                await self.mee6.send_message(message.channel, msg)
+
         await self.on_message(message)
 
     async def on_message(self, message):

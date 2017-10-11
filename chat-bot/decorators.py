@@ -46,7 +46,7 @@ def command(pattern=None, db_check=False, user_check=None, db_name=None,
             # Is it matching?
             match = prog.match(message.content)
             if not match:
-                return
+                return False
 
             args = match.groups()
             server = message.server

@@ -94,7 +94,7 @@ def _build_re():
     return re.compile(pattern)
 
 class Context:
-    def __init__(self, user=None, server=None, channel=None, message=None):
+    def __init__(self, args=[], user=None, server=None, channel=None, message=None):
         if message:
             self.user = RichUser(message.author)
             self.server = message.server
@@ -104,7 +104,11 @@ class Context:
         if server: self.server = server
         if channel: self.channel = channel
 
+        self.args = args
+
 REX = _build_re()
+
+RANDOM_RE = re.compile(r'{random(:(-?[0-9]*):(-?[0-9]*))?}')
 
 def repl(context, match):
     field = next(field for field in match.groups() if field)
@@ -115,7 +119,23 @@ def repl(context, match):
 
     return str(field_value)
 
-def rich_response(response, **kwargs):
+import random
+def random_repl(match):
+    _, frm, to = match.groups()
+    frm = int(frm) if frm is not None else 0
+    to  = int(to) if to is not None else 10
+
+    return str(random.randint(frm, to))
+
+def rich_response(resp, **kwargs):
     context = Context(**kwargs)
-    return REX.sub(lambda m: repl(context, m), response)
+
+    for i, arg in enumerate(context.args):
+        resp = resp.replace('{'+str(i+1)+'}', arg)
+
+    resp = REX.sub(lambda m: repl(context, m), resp)
+
+    resp = RANDOM_RE.sub(random_repl, resp)
+
+    return resp
 

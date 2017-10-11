@@ -1,4 +1,3 @@
-# Latest discord.py
 aioredis
 motor
 git+https://github.com/cookkkie/aiomeasures.git

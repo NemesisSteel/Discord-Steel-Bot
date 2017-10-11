@@ -236,9 +236,12 @@ class Levels(Plugin):
                             'role': role})
         return rewards
 
-    async def add_role(self, member, role):
-        if check_add_role_perm(member, role, member.server.me):
-            return await self.mee6.add_roles(member, role)
+    async def add_roles(self, member, *roles):
+        if len(roles) == 0: return
+
+        _roles = [role for role in roles if check_add_role_perm(member, role,
+                                                                member.server.me)]
+        return await self.mee6.add_roles(member, *_roles)
 
     async def update_rewards(self, server):
         rewards = await self.get_rewards(server)
@@ -251,18 +254,22 @@ class Levels(Plugin):
             player_xp = int(await storage.get('player:' + player.id + ':xp') or
                             0)
             player_level = self._get_level_from_xp(player_xp)
+            roles_to_give = []
             for reward in rewards:
                 if reward['lvl'] > player_level:
                     continue
                 role = reward['role']
                 if role in player.roles:
                     continue
-                try:
-                    await self.add_role(player, role)
-                except Exception as e:
-                    log.info('Cannot give {} the {} reward'.format(player.id,
-                                                                   role.id))
-                    log.info(e)
+
+                roles_to_give.append(role)
+
+            try:
+                await self.add_roles(player, *roles_to_give)
+            except Exception as e:
+                log.info('Cannot give {} the {} reward'.format(player.id,
+                                                               roles_to_give))
+                log.info(e)
             await asyncio.sleep(0.1)
 
     async def update_rewards_job(self):
