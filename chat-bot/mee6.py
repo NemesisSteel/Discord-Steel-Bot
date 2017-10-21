@@ -34,7 +34,7 @@ class Mee6(discord.Client):
         self.stats = DDAgent(self.dd_agent_url)
         self.voice_sessions_ids = dict()
 
-        if self.shard_id:
+        if self.shard_id is not None:
             self.shard = [self.shard_id, self.shard_count]
         else:
             self.shard = [0, 1]
