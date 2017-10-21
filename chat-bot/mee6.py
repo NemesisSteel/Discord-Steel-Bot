@@ -8,6 +8,8 @@ from plugin_manager import PluginManager
 from database import Db
 from datadog import DDAgent
 from backdoor import make_console
+from schwifty import SchwiftyWebsocket
+from websockets.exceptions import ConnectionClosed
 
 log = logging.getLogger('discord')
 
@@ -30,12 +32,35 @@ class Mee6(discord.Client):
         self.plugin_manager.load_all()
         self.last_messages = []
         self.stats = DDAgent(self.dd_agent_url)
+        self.voice_sessions_ids = dict()
+
+        if self.shard_id:
+            self.shard = [self.shard_id, self.shard_count]
+        else:
+            self.shard = [0, 1]
 
     def run(self, *args):
         console_coro = self.loop.create_server(make_console(self),
                                                '127.0.0.1', 8000)
         self.loop.run_until_complete(console_coro)
+        self.loop.create_task(self.connect_schwifty())
         self.loop.run_until_complete(self.start(*args))
+
+    async def connect_schwifty(self):
+        self.schwifty = await SchwiftyWebsocket.create(
+            self.shard,
+            self
+        )
+
+        while not self.is_closed:
+            try:
+                await self.schwifty.poll_event()
+            except (ConnectionClosed, asyncio.TimeoutError) as e:
+                await asyncio.sleep(1)
+                self.schwifty = await SchwiftyWebsocket.create(
+                    self.shard,
+                    self
+                )
 
     async def console(reader, writer):
         loop = asyncio.get_event_loop()
@@ -51,6 +76,8 @@ class Mee6(discord.Client):
 
     async def _send_monitoring_message(self, msg):
         url = os.getenv('MONITORING_WH')
+        if not url:
+            return
         headers = {}
         headers['Content-Type'] = 'application/json'
         data = json.dumps({'content': msg})
@@ -63,17 +90,46 @@ class Mee6(discord.Client):
                 't': payload.get('t') or "NONE"}
         self.stats.incr('discord.event', tags=tags)
 
-        if payload['op'] == 0:
-            if payload['t'] == 'READY':
-                if hasattr(self, 'shard_id'):
-                    msg = "**[READY]** shard {}/{}".format(self.shard_id,
-                                                           self.shard_count)
-                    self.send_monitoring_message(msg)
-            if payload['t'] == 'RESUMED':
-                if hasattr(self, 'shard_id'):
-                    msg = "**[RESUMED]** shard {}/{}".format(self.shard_id,
-                                                             self.shard_count)
-                    self.send_monitoring_message(msg)
+        if not payload['op'] == 0:
+            return
+
+        if payload['t'] == 'VOICE_STATE_UPDATE':
+            d = payload['d']
+            if str(d['user_id']) != self.user.id:
+                return
+
+            guild_id = d['guild_id']
+            self.voice_sessions_ids[guild_id] = d['session_id']
+
+        if payload['t'] == 'VOICE_SERVER_UPDATE':
+            d = payload['d']
+            guild_id = d['guild_id']
+            d['session_id'] = self.voice_sessions_ids.get(guild_id)
+            await self.schwifty.voice_update(d)
+
+        if payload['t'] == 'READY':
+            if not hasattr(self, 'shard_id'):
+                return
+
+            msg = "**[READY]** shard {}/{}".format(
+                self.shard_id,
+                self.shard_count
+            )
+            self.send_monitoring_message(msg)
+
+        if payload['t'] == 'RESUMED':
+            if not hasattr(self, 'shard_id'):
+                return
+
+            msg = "**[RESUMED]** shard {}/{}".format(self.shard_id,
+                                                     self.shard_count)
+            self.send_monitoring_message(msg)
+
+    async def dispatch_schwifty_event(self, t, d):
+        listener_name = 'on_schwifty_' + t.lower()
+        listener = getattr(self, listener_name, None)
+        if listener:
+            await listener(**d)
 
     async def on_ready(self):
         """Called when the bot is ready.
@@ -247,3 +303,16 @@ class Mee6(discord.Client):
         enabled_plugins = await self.get_plugins(server)
         for plugin in enabled_plugins:
             self.loop.create_task(plugin.on_server_update(before, after))
+
+    async def on_schwifty_playing(self, guild_id, url):
+        server = discord.Object(id=str(guild_id))
+        enabled_plugins = await self.get_plugins(server)
+        for plugin in enabled_plugins:
+            self.loop.create_task(plugin.on_schwifty_playing(guild_id, url))
+
+    async def on_schwifty_finished_playing(self, guild_id):
+        server = discord.Object(id=str(guild_id))
+        enabled_plugins = await self.get_plugins(server)
+        for plugin in enabled_plugins:
+            self.loop.create_task(plugin.on_schwifty_finished_playing(guild_id))
+

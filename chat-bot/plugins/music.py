@@ -35,7 +35,7 @@ class Music(Plugin):
              description="Makes me play the next song in the queue",
              usage='!play')
     async def play(self, m, args):
-        voice = m.server.voice_client
+        voice = m.server.me.voice_channel
         if not voice:
             response = "I'm not connected to any voice channel :grimacing:..."
             return await self.mee6.send_message(m.channel, response)
@@ -52,12 +52,25 @@ class Music(Plugin):
             print(e)
             await self.mee6.send_message(m.channel, response)
 
+    async def on_schwifty_finished_playing(self, guild_id):
+        server = discord.Object(id=str(guild_id))
+        music = await self.pop_music(server)
+        if not music:
+            return
+
+        try:
+            await self._play(server, music)
+        except Exception as e:
+            response = 'An error occurred, sorry :grimacing:...'
+            print(e)
+
+
     @command(pattern='^!next$',
              description="Makes me jump to the next song in the queue",
              require_one_of_roles="allowed_roles",
              usage='!next')
     async def next(self, m, args):
-        voice = m.server.voice_client
+        voice = m.server.me.voice_channel
         if not voice:
             response = "I'm not connected to any voice channel :grimacing:..."
             return await self.mee6.send_message(m.channel, response)
@@ -79,10 +92,7 @@ class Music(Plugin):
              require_one_of_roles="allowed_roles",
              usage='!stop')
     async def stop(self, m, args):
-        curr_player = self.players.get(m.server.id)
-        if curr_player:
-            self.call_next[m.server.id] = False
-            curr_player.stop()
+        await self.mee6.schwifty.stop(m.server.id)
 
     async def _next(self, guild):
         music = await self.pop_music(guild)
@@ -100,19 +110,11 @@ class Music(Plugin):
             print(e)
             print(response)
 
-    def sync_next(self, guild):
-        def n(player):
-            if player.error:
-                e = player.error
-                import traceback
-                log('Error from the player')
-                log(traceback.format_exception(type(e), e, None))
-            if self.call_next[guild.id]:
-                self.mee6.loop.create_task(self._next(guild))
-            self.call_next[guild.id] = True
-        return n
-
     async def _play(self, guild, music):
+        await self.mee6.schwifty.play(guild.id, music['url'])
+        await self.set_np(music, guild)
+
+    async def __play(self, guild, music):
         lock = self.play_locks[guild.id]
         await lock.acquire()
         try:
@@ -163,11 +165,8 @@ class Music(Plugin):
             response = "You are not in a voice channel."
             return await self.mee6.send_message(message.channel, response)
 
-        voice = message.server.voice_client
-        if voice:
-            await voice.move_to(voice_channel)
-        else:
-            await self.mee6.join_voice_channel(voice_channel)
+        await self.mee6.schwifty.voice_connect(message.server.id)
+        await self.mee6.ws.voice_state(message.server.id, voice_channel.id)
 
         response = "Connecting to voice channel **{}**".format(voice_channel.name)
         await self.mee6.send_message(message.channel, response)
@@ -177,13 +176,8 @@ class Music(Plugin):
              require_one_of_roles="allowed_roles",
              usage='!leave')
     async def leave(self, message, args):
-        vc = message.server.voice_client
-        log('Trying to leave channel, voice_client:')
-        log(vc)
+        await self.mee6.schwifty.voice_disconnect(message.server.id)
         await self.mee6.ws.voice_state(message.server.id, None, self_mute=True)
-        if message.server.voice_client:
-            await vc.disconnect()
-            log('diconnected from channel')
 
     @command(pattern='^!playlist$',
              description="Shows the songs in the playlist",
