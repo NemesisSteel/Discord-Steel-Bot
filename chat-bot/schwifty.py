@@ -56,7 +56,7 @@ class SchwiftyWebsocket(websockets.client.WebSocketClientProtocol):
         self.timeout = 5
         self.heartbeat_ack = True
         self.heartbeat     = None
-        self.shard         = kwargs.get('shard') or [0, 1]
+        self.shard = self.mee6.shard
 
     async def received_message(self, msg):
         msg = msg.decode('utf-8')
