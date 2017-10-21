@@ -114,3 +114,9 @@ class Plugin(object, metaclass=PluginMount):
 
     async def on_typing(self, channel, user, when):
         pass
+
+    async def on_schwifty_playing(self, guild_id, url):
+        pass
+
+    async def on_schwifty_finished_playing(self, guild_id):
+        pass
