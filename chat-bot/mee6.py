@@ -105,7 +105,8 @@ class Mee6(discord.Client):
             d = payload['d']
             guild_id = d['guild_id']
             d['session_id'] = self.voice_sessions_ids.get(guild_id)
-            await self.schwifty.voice_update(d)
+            if d.get('endpoint'):
+                await self.schwifty.voice_update(d)
 
         if payload['t'] == 'READY':
             if not hasattr(self, 'shard_id'):
