@@ -1,5 +1,5 @@
 # Mee6 : The Discord bot
-![Mee6](http://mee6.xyz/static/img/meeseeks.png)
+**DEPRECATED, new version: https://github.com/mee6, for support and questions: http://discord.gg/mee6**
 
 ## What is it?
 Mee6 is a Discord bot that lets you easily add your own commands to your server
